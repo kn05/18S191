@@ -477,7 +477,7 @@ enforcement(p) = rand()<p
 
 # ╔═╡ d1bcd5c4-0a4b-11eb-1218-7531e367a7ff
 function interact!(agent::Agent, source::Agent, infection::CollisionInfectionRecovery)
-	if position(agent)==position(source) && source.status==I
+	if position(agent)==position(source) && agent.status==S && source.status==I
 		if enforcement(infection.p_infection)
 			agent.status = I
 		end
@@ -577,8 +577,33 @@ let
 	N = 50
 	L = 30
 	
-	# agents = initialize(N, L)
-	# compute k_sweep_max number of sweeps and plot the SIR
+	p = plot()
+	
+	Ss = zeros(k_sweep_max) 
+	Is = zeros(k_sweep_max)
+	Rs = zeros(k_sweep_max)
+	
+	function count(agents::Array{Agent, 1})
+		return map(stat->length(filter(a->a.status==stat, agents)), (S, I, R))
+	end
+	
+	agents = initialize(N, L)	
+	
+	Ss[1], Is[1], Rs[1] = count(agents)
+	
+	for i in 2:k_sweep_max
+		Ss[i], Is[i], Rs[i] = count(agents)
+		for _ in 1:N
+			step!(agents, L, pandemic)
+		end
+	end
+	
+	plot!(p, title="SIR curves", xlabel="steps", ylabel="number")
+	plot!(p, Ss, label="S", linecolor=color(S))
+	plot!(p, Is, label="I", linecolor=color(I))
+	plot!(p, Rs, label="R", linecolor=color(R))
+	
+	p
 end
 
 # ╔═╡ 201a3810-0a45-11eb-0ac9-a90419d0b723
