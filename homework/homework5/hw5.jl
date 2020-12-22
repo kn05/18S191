@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.12.3
+# v0.12.17
 
 using Markdown
 using InteractiveUtils
@@ -119,7 +119,10 @@ We define a struct type `Coordinate` that contains integers `x` and `y`.
 """
 
 # ╔═╡ 0ebd35c8-0972-11eb-2e67-698fd2d311d2
-
+struct Coordinate
+	x::Integer
+	y::Integer
+end
 
 # ╔═╡ 027a5f48-0a44-11eb-1fbf-a94d02d0b8e3
 md"""
@@ -127,7 +130,7 @@ md"""
 """
 
 # ╔═╡ b2f90634-0a68-11eb-1618-0b42f956b5a7
-origin = missing
+origin = Coordinate(0, 0)
 
 # ╔═╡ 3e858990-0954-11eb-3d10-d10175d8ca1c
 md"""
@@ -135,9 +138,9 @@ md"""
 """
 
 # ╔═╡ 189bafac-0972-11eb-1893-094691b2073c
-# function make_tuple(c)
-# 	missing
-# end
+function make_tuple(c)
+	return (c.x, c.y)
+end
 
 # ╔═╡ 73ed1384-0a29-11eb-06bd-d3c441b8a5fc
 md"""
@@ -179,13 +182,12 @@ md"""
 """
 
 # ╔═╡ e24d5796-0a68-11eb-23bb-d55d206f3c40
-# function Base.:+(a::TYPE, b::TYPE)
-	
-# 	return missing
-# end
+function Base.:+(a::Coordinate, b::Coordinate)
+	return Coordinate(a.x+b.x, a.y+b.y)
+end
 
 # ╔═╡ ec8e4daa-0a2c-11eb-20e1-c5957e1feba3
-# Coordinate(3,4) + Coordinate(10,10) # uncomment to check + works
+Coordinate(3,4) + Coordinate(10,10) # uncomment to check + works
 
 # ╔═╡ e144e9d0-0a2d-11eb-016e-0b79eba4b2bb
 md"""
@@ -201,12 +203,12 @@ In our model, agents will be able to walk in 4 directions: up, down, left and ri
 # ╔═╡ 5278e232-0972-11eb-19ff-a1a195127297
 # uncomment this:
 
-# possible_moves = [
-# 	Coordinate( 1, 0), 
-# 	Coordinate( 0, 1), 
-# 	Coordinate(-1, 0), 
-# 	Coordinate( 0,-1),
-# ]
+possible_moves = [
+	Coordinate( 1, 0), 
+	Coordinate( 0, 1), 
+	Coordinate(-1, 0), 
+	Coordinate( 0,-1),
+]
 
 # ╔═╡ 71c9788c-0aeb-11eb-28d2-8dcc3f6abacd
 md"""
@@ -214,7 +216,7 @@ md"""
 """
 
 # ╔═╡ 69151ce6-0aeb-11eb-3a53-290ba46add96
-
+Coordinate(4, 5) + rand(possible_moves)
 
 # ╔═╡ 3eb46664-0954-11eb-31d8-d9c0b74cf62b
 md"""
@@ -231,13 +233,9 @@ Possible steps:
 """
 
 # ╔═╡ edf86a0e-0a68-11eb-2ad3-dbf020037019
-# function trajectory(w::Coordinate, n::Int)
-	
-# 	return missing
-# end
-
-# ╔═╡ 44107808-096c-11eb-013f-7b79a90aaac8
-# test_trajectory = trajectory(Coordinate(4,4), 30) # uncomment to test
+function trajectory(w::Coordinate, n::Int)
+	return accumulate(+, rand(possible_moves, n); init=w)	
+end
 
 # ╔═╡ 478309f4-0a31-11eb-08ea-ade1755f53e0
 function plot_trajectory!(p::Plots.Plot, trajectory::Vector; kwargs...)
@@ -247,25 +245,6 @@ function plot_trajectory!(p::Plots.Plot, trajectory::Vector; kwargs...)
 		linealpha=LinRange(1.0, 0.2, length(trajectory)),
 		kwargs...)
 end
-
-# ╔═╡ 87ea0868-0a35-11eb-0ea8-63e27d8eda6e
-try
-	p = plot(ratio=1, size=(650,200))
-	plot_trajectory!(p, test_trajectory; color="black", showaxis=false, axis=nothing, linewidth=4)
-	p
-catch
-end
-
-# ╔═╡ 51788e8e-0a31-11eb-027e-fd9b0dc716b5
-# 	let
-# 		long_trajectory = trajectory(Coordinate(4,4), 1000)
-
-# 		p = plot(ratio=1)
-# 		plot_trajectory!(p, long_trajectory)
-# 		p
-# 	end
-
-# ^ uncomment to visualize a trajectory
 
 # ╔═╡ 3ebd436c-0954-11eb-170d-1d468e2c7a37
 md"""
@@ -288,9 +267,6 @@ end
 ```
 """
 
-# ╔═╡ dcefc6fe-0a3f-11eb-2a96-ddf9c0891873
-
-
 # ╔═╡ b4d5da4a-09a0-11eb-1949-a5807c11c76c
 md"""
 #### Exercise 1.5
@@ -304,13 +280,23 @@ One relatively simple boundary condition is a **collision boundary**:
 """
 
 # ╔═╡ 0237ebac-0a69-11eb-2272-35ea4e845d84
-# function collide_boundary(c::Coordinate, L::Number)
-	
-# 	return missing
-# end
+function extend(x::Number, L::Number)
+	if x < -L
+		return -L
+	elseif L < x
+		return L
+	else
+		return x
+	end
+end
+
+# ╔═╡ 205dee9a-4382-11eb-1c5b-cbeb20e0302e
+function collide_boundary(c::Coordinate, L::Number, f=extend)
+	return Coordinate(f(c.x, L), f(c.y, L))
+end
 
 # ╔═╡ ad832360-0a40-11eb-2857-e7f0350f3b12
-# collide_boundary(Coordinate(12,4), 10) # uncomment to test
+collide_boundary(Coordinate(12,4), 10) # uncomment to test
 
 # ╔═╡ b4ed2362-09a0-11eb-0be9-99c91623b28f
 md"""
@@ -320,10 +306,61 @@ md"""
 """
 
 # ╔═╡ 0665aa3e-0a69-11eb-2b5d-cd718e3c7432
-# function trajectory(c::Coordinate, n::Int, L::Number)
+function trajectory(c::Coordinate, n::Int, L::Number)
+ 	return collide_boundary.(trajectory(c, n), L)
+end
+
+# ╔═╡ 44107808-096c-11eb-013f-7b79a90aaac8
+test_trajectory = trajectory(Coordinate(4,4), 30) # uncomment to test
+
+# ╔═╡ 87ea0868-0a35-11eb-0ea8-63e27d8eda6e
+try
+	p = plot(ratio=1, size=(650,200))
+	plot_trajectory!(p, test_trajectory; color="black", showaxis=false, axis=nothing, linewidth=4)
+	p
+catch
+end
+
+# ╔═╡ 51788e8e-0a31-11eb-027e-fd9b0dc716b5
+let
+	long_trajectory = trajectory(Coordinate(4,4), 1000)
+
+	p = plot(ratio=1)
+	plot_trajectory!(p, long_trajectory)
+	p
+end
+
+# ^ uncomment to visualize a trajectory
+
+# ╔═╡ dcefc6fe-0a3f-11eb-2a96-ddf9c0891873
+let 
+	# Create a new plot with aspect ratiom 1:1
+	p = plot(ratio=1)
 	
-# 	return missing
-# end
+	# Create trajectiories
+	trajectories = [trajectory(Coordinate(0,0), 1000) for _ in 1:10]
+	
+	for t in trajectories
+		plot_trajectory!(p, t)
+	end
+	
+	p
+end
+
+# ╔═╡ bee26546-4382-11eb-390f-05e26e849381
+let 
+	# Create a new plot with aspect ratiom 1:1
+	p = plot(ratio=1)
+	
+	# Create trajectiories
+	trajectories = [trajectory(Coordinate(0,0), 1000, 20) for _ in 1:10]
+	
+	for t in trajectories
+		plot_trajectory!(p, t)
+	end
+	
+	p
+end
 
 # ╔═╡ 3ed06c80-0954-11eb-3aee-69e4ccdc4f9d
 md"""
@@ -341,6 +378,10 @@ Let's define a type `Agent`. `Agent` contains a `position` (of type `Coordinate`
 
 # ╔═╡ cf2f3b98-09a0-11eb-032a-49cc8c15e89c
 # define agent struct here:
+mutable struct Agent
+	position::Coordinate
+	status::InfectionStatus
+end
 
 # ╔═╡ 814e888a-0954-11eb-02e5-0964c7410d30
 md"""
@@ -351,17 +392,19 @@ It returns a `Vector` of `N` randomly generated `Agent`s. Their coordinates are 
 """
 
 # ╔═╡ 0cfae7ba-0a69-11eb-3690-d973d70e47f4
-# function initialize(N::Number, L::Number)
-	
-# 	return missing
-# end
+function initialize(N::Number, L::Number)
+	agents = [Agent(Coordinate(rand(-L:L), rand(-L:L)),S) for _ in 1:N]
+	agents[rand(1:N)].status = I
+ 	return agents
+end
 
 # ╔═╡ 1d0f8eb4-0a46-11eb-38e7-63ecbadbfa20
-# initialize(3, 10)
+initialize(3, 10)
 
 # ╔═╡ e0b0880c-0a47-11eb-0db2-f760bbbf9c11
 # Color based on infection status
-color(s::InfectionStatus) = if s == S
+color(s::InfectionStatus) = 
+if s == S
 	"blue"
 elseif s == I
 	"red"
@@ -370,10 +413,10 @@ else
 end
 
 # ╔═╡ b5a88504-0a47-11eb-0eda-f125d419e909
-# position(a::Agent) = a.position # uncomment this line
+position(a::Agent) = a.position # uncomment this line
 
 # ╔═╡ 87a4cdaa-0a5a-11eb-2a5e-cfaf30e942ca
-# color(a::Agent) = color(a.status) # uncomment this line
+color(a::Agent) = color(a.status) # uncomment this line
 
 # ╔═╡ 49fa8092-0a43-11eb-0ba9-65785ac6a42f
 md"""
@@ -384,16 +427,21 @@ You can use the keyword argument `c=color.(agents)` inside your call to the plot
 """
 
 # ╔═╡ 1ccc961e-0a69-11eb-392b-915be07ef38d
-# function visualize(agents::Vector, L)
+function visualize(agents::Vector, L)
+	p = scatter(ratio=1)
 	
-# 	return missing
-# end
+	for agent in agents
+		scatter!(make_tuple(agent.position), markercolor=color(agent), label=false)
+	end
+	
+	return p
+end
 
 # ╔═╡ 1f96c80a-0a46-11eb-0690-f51c60e57c3f
 let
 	N = 20
 	L = 10
-#	visualize(initialize(N, L), L) # uncomment this line!
+	visualize(initialize(N, L), L) # uncomment this line!
 end
 
 # ╔═╡ f953e06e-099f-11eb-3549-73f59fed8132
@@ -424,10 +472,24 @@ Write a function `interact!` that takes two `Agent`s and a `CollisionInfectionRe
 - if the first agent is infectious, it recovers with some probability
 """
 
+# ╔═╡ 604b5c86-43a0-11eb-2296-b105ab5bf79b
+enforcement(p) = rand()<p
+
 # ╔═╡ d1bcd5c4-0a4b-11eb-1218-7531e367a7ff
-#function interact!(agent::Agent, source::Agent, infection::CollisionInfectionRecovery)
-	#missing
-#end
+function interact!(agent::Agent, source::Agent, infection::CollisionInfectionRecovery)
+	if position(agent)==position(source) && source.status==I
+		if enforcement(infection.p_infection)
+			agent.status = I
+		end
+	end
+	if agent.status==I
+		if enforcement(infection.p_recovery)
+			agent.status = R
+		end
+	end
+	
+	agent, source
+end
 
 # ╔═╡ 34778744-0a5f-11eb-22b6-abe8b8fc34fd
 md"""
@@ -446,10 +508,14 @@ Your turn!
 """
 
 # ╔═╡ 24fe0f1a-0a69-11eb-29fe-5fb6cbf281b8
-# function step!(agents::Vector, L::Number, infection::AbstractInfection)
-	
-# 	return missing
-# end
+function step!(agents::Vector, L::Number, infection::AbstractInfection)
+	sidx = rand(1:length(agents))
+	agents[sidx].position = collide_boundary(agents[sidx].position + rand(possible_moves), L)
+	for idx in filter(x->x≢sidx, 1:length(agents))
+		interact!(agents[idx], agents[sidx], infection)
+	end
+ 	return agents
+end
 
 # ╔═╡ 1fc3271e-0a45-11eb-0e8d-0fd355f5846b
 md"""
@@ -475,15 +541,24 @@ pandemic = CollisionInfectionRecovery(0.5, 0.00001)
 @bind k_sweeps Slider(1:10000, default=1000)
 
 # ╔═╡ 778c2490-0a62-11eb-2a6c-e7fab01c6822
-# let
-# 	N = 50
-# 	L = 40
+let
+	N = 50
+ 	L = 40
 	
-# 	plot_before = plot(1:3) # replace with your code
-# 	plot_after = plot(1:3)
+	agents = initialize(N, L)
 	
-# 	plot(plot_before, plot_after)
-# end
+ 	plot_before = visualize(agents, L)
+	
+	for _ in 1:k_sweeps
+		for _ in 1:N
+			step!(agents, L, pandemic)
+		end
+	end
+	
+ 	plot_after = visualize(agents, L)
+	
+ 	plot(plot_before, plot_after)
+end
 
 # ╔═╡ e964c7f0-0a61-11eb-1782-0b728fab1db0
 md"""
@@ -941,7 +1016,7 @@ bigbreak
 # ╟─66663fcc-0a58-11eb-3568-c1f990c75bf2
 # ╟─3e858990-0954-11eb-3d10-d10175d8ca1c
 # ╠═189bafac-0972-11eb-1893-094691b2073c
-# ╠═ad1253f8-0a34-11eb-265e-fffda9b6473f
+# ╟─ad1253f8-0a34-11eb-265e-fffda9b6473f
 # ╟─73ed1384-0a29-11eb-06bd-d3c441b8a5fc
 # ╠═96707ef0-0a29-11eb-1a3e-6bcdfb7897eb
 # ╠═b0337d24-0a29-11eb-1fab-876a87c0973f
@@ -949,7 +1024,7 @@ bigbreak
 # ╠═e24d5796-0a68-11eb-23bb-d55d206f3c40
 # ╠═ec8e4daa-0a2c-11eb-20e1-c5957e1feba3
 # ╟─e144e9d0-0a2d-11eb-016e-0b79eba4b2bb
-# ╠═ec576da8-0a2c-11eb-1f7b-43dec5f6e4e7
+# ╟─ec576da8-0a2c-11eb-1f7b-43dec5f6e4e7
 # ╟─71c358d8-0a2f-11eb-29e1-57ff1915e84a
 # ╠═5278e232-0972-11eb-19ff-a1a195127297
 # ╟─71c9788c-0aeb-11eb-28d2-8dcc3f6abacd
@@ -965,9 +1040,11 @@ bigbreak
 # ╠═dcefc6fe-0a3f-11eb-2a96-ddf9c0891873
 # ╟─b4d5da4a-09a0-11eb-1949-a5807c11c76c
 # ╠═0237ebac-0a69-11eb-2272-35ea4e845d84
+# ╠═205dee9a-4382-11eb-1c5b-cbeb20e0302e
 # ╠═ad832360-0a40-11eb-2857-e7f0350f3b12
 # ╟─b4ed2362-09a0-11eb-0be9-99c91623b28f
 # ╠═0665aa3e-0a69-11eb-2b5d-cd718e3c7432
+# ╠═bee26546-4382-11eb-390f-05e26e849381
 # ╟─ed2d616c-0a66-11eb-1839-edf8d15cf82a
 # ╟─3ed06c80-0954-11eb-3aee-69e4ccdc4f9d
 # ╠═35537320-0a47-11eb-12b3-931310f18dec
@@ -986,6 +1063,7 @@ bigbreak
 # ╠═e6dd8258-0a4b-11eb-24cb-fd5b3554381b
 # ╠═de88b530-0a4b-11eb-05f7-85171594a8e8
 # ╟─80f39140-0aef-11eb-21f7-b788c5eab5c9
+# ╠═604b5c86-43a0-11eb-2296-b105ab5bf79b
 # ╠═d1bcd5c4-0a4b-11eb-1218-7531e367a7ff
 # ╟─34778744-0a5f-11eb-22b6-abe8b8fc34fd
 # ╠═24fe0f1a-0a69-11eb-29fe-5fb6cbf281b8

@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.11.12
+# v0.12.17
 
 using Markdown
 using InteractiveUtils
@@ -159,7 +159,8 @@ function remove_in_each_row_no_vcat(img, column_numbers)
 	for (i, j) in enumerate(column_numbers)
 		# EDIT THE FOLLOWING LINE and split it into two lines
 		# to avoid using `vcat`.
-		img′[i, :] .= vcat(img[i, 1:j-1], img[i, j+1:end])
+		img′[i, 1:j-1] .= img[i, 1:j-1]
+		img′[i, j:end] .= img[i, j+1:end]
 	end
 	img′
 end
@@ -181,7 +182,7 @@ md"""
 
 # ╔═╡ e49235a4-f367-11ea-3913-f54a4a6b2d6b
 no_vcat_observation = md"""
-<Your answer here>
+494.03 KiB
 """
 
 # ╔═╡ 837c43a4-f368-11ea-00a3-990a45cb0cbd
@@ -203,7 +204,8 @@ function remove_in_each_row_views(img, column_numbers)
 	for (i, j) in enumerate(column_numbers)
 		# EDIT THE FOLLOWING LINE and split it into two lines
 		# to avoid using `vcat`.
-		img′[i, :] .= vcat(img[i, 1:j-1], img[i, j+1:end])
+		img′[i, 1:j-1] .= @view img[i, 1:j-1]
+		img′[i, j:end] .= @view img[i, j+1:end]
 	end
 	img′
 end
@@ -238,7 +240,7 @@ Nice! If you did your optimizations right, you should be able to get down the es
 
 # ╔═╡ fd819dac-f368-11ea-33bb-17148387546a
 views_observation = md"""
-<your answer here>
+528.48 KiB
 """
 
 # ╔═╡ 318a2256-f369-11ea-23a9-2f74c566549b
@@ -640,17 +642,6 @@ if shrink_greedy
 	greedy_carved[greedy_n]
 end
 
-# ╔═╡ d88bc272-f392-11ea-0efd-15e0e2b2cd4e
-if shrink_recursive
-	recursive_carved = shrink_n(pika, 3, recursive_seam)
-	md"Shrink by: $(@bind recursive_n Slider(1:3, show_value=true))"
-end
-
-# ╔═╡ e66ef06a-f392-11ea-30ab-7160e7723a17
-if shrink_recursive
-	recursive_carved[recursive_n]
-end
-
 # ╔═╡ 4e3ef866-f3c5-11ea-3fb0-27d1ca9a9a3f
 if shrink_dict
 	dict_carved = shrink_n(img, 200, recursive_memoized_seam)
@@ -707,6 +698,17 @@ if compute_access
 	tracked = track_access(energy(pika))
 	least_energy(tracked, 1,7)
 	tracked.accesses[]
+end
+
+# ╔═╡ d88bc272-f392-11ea-0efd-15e0e2b2cd4e
+if shrink_recursive
+	recursive_carved = shrink_n(pika, 3, recursive_seam)
+	md"Shrink by: $(@bind recursive_n Slider(1:3, show_value=true))"
+end
+
+# ╔═╡ e66ef06a-f392-11ea-30ab-7160e7723a17
+if shrink_recursive
+	recursive_carved[recursive_n]
 end
 
 # ╔═╡ ffc17f40-f380-11ea-30ee-0fe8563c0eb1
@@ -856,7 +858,7 @@ bigbreak
 # ╟─9e149cd2-f367-11ea-28ef-b9533e8a77bb
 # ╟─e3519118-f387-11ea-0c61-e1c2de1c24c1
 # ╟─ba1619d4-f389-11ea-2b3f-fd9ba71cf7e3
-# ╠═e49235a4-f367-11ea-3913-f54a4a6b2d6b
+# ╟─e49235a4-f367-11ea-3913-f54a4a6b2d6b
 # ╟─145c0f58-f384-11ea-2b71-09ae83f66da2
 # ╟─837c43a4-f368-11ea-00a3-990a45cb0cbd
 # ╠═90a22cc6-f327-11ea-1484-7fda90283797
@@ -866,7 +868,7 @@ bigbreak
 # ╟─4f0975d8-f329-11ea-3d10-59a503f8d6b2
 # ╟─dc63d32a-f387-11ea-37e2-6f3666a72e03
 # ╟─7eaa57d2-f368-11ea-1a70-c7c7e54bd0b1
-# ╠═fd819dac-f368-11ea-33bb-17148387546a
+# ╟─fd819dac-f368-11ea-33bb-17148387546a
 # ╟─d7a9c000-f383-11ea-1516-cf71102d8e94
 # ╟─8d558c4c-f328-11ea-0055-730ead5d5c34
 # ╟─318a2256-f369-11ea-23a9-2f74c566549b

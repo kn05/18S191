@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.11.14
+# v0.12.17
 
 using Markdown
 using InteractiveUtils
@@ -149,7 +149,7 @@ md"👉 Use `filter` to extract just the characters from our alphabet out of `me
 messy_sentence_1 = "#wow 2020 ¥500 (blingbling!)"
 
 # ╔═╡ 75694166-f998-11ea-0428-c96e1113e2a0
-cleaned_sentence_1 = missing
+cleaned_sentence_1 = filter(isinalphabet, messy_sentence_1)
 
 # ╔═╡ 05f0182c-f999-11ea-0a52-3d46c65a049e
 md"""
@@ -165,7 +165,7 @@ md"👉 Use the function `lowercase` to convert `messy_sentence_2` into a lower 
 messy_sentence_2 = "Awesome! 😍"
 
 # ╔═╡ d3a4820e-f998-11ea-2a5c-1f37e2a6dd0a
-cleaned_sentence_2 = missing
+cleaned_sentence_2 = filter(isinalphabet, map(lowercase, messy_sentence_2))
 
 # ╔═╡ aad659b8-f998-11ea-153e-3dae9514bfeb
 md"""
@@ -216,7 +216,7 @@ $(html"<br>")
 # ╔═╡ 4affa858-f92e-11ea-3ece-258897c37e51
 function clean(text)
 	# we turn everything to lowercase to keep the number of letters small
-	missing
+	filter(isinalphabet, map(lowercase, unaccent(text)))
 end
 
 # ╔═╡ e00d521a-f992-11ea-11e0-e9da8255b23b
@@ -258,10 +258,19 @@ $(html"<br>")
 👉 Which letters from the alphabet did not occur in the sample?
 """
 
+# ╔═╡ 7912b9a8-408a-11eb-376e-6f41dc7e5886
+findall(x->x==0, sample_freqs) 
+
+# ╔═╡ 34a3cfa4-408b-11eb-0686-6fd712f1a7dd
+sample_freqs .== 0
+
+# ╔═╡ a742330c-408b-11eb-1e97-6d844f0ea334
+sample_freqs[sample_freqs.==0]
+
 # ╔═╡ 92bf9fd2-f9a5-11ea-25c7-5966e44db6c6
 unused_letters = let
-	['a', 'b']
-end
+	['j', 'q', 'z']
+	end
 
 # ╔═╡ 01215e9a-f9a9-11ea-363b-67392741c8d4
 md"""
@@ -327,22 +336,31 @@ end
 # ╔═╡ e91c6fd8-f930-11ea-01ac-476bbde79079
 md"""👉 What is the frequency of the combination `"th"`?"""
 
+# ╔═╡ 9fa71f24-408e-11eb-2794-c1b54b18947c
+some_frequency(sample, a, b) = transition_frequencies(sample)[index_of_letter(a), index_of_letter(b)]
+
 # ╔═╡ 1b4c0c28-f9ab-11ea-03a6-69f69f7f90ed
-th_frequency = missing
+th_frequency = some_frequency(first_sample, 't', 'h')
 
 # ╔═╡ 1f94e0a2-f9ab-11ea-1347-7dd906ebb09d
 md"""👉 What about `"ht"`?"""
 
 # ╔═╡ 41b2df7c-f931-11ea-112e-ede3b16f357a
-ht_frequency = missing
+ht_frequency = some_frequency(first_sample, 'h', 't')
 
 # ╔═╡ 1dd1e2f4-f930-11ea-312c-5ff9e109c7f6
 md"""
 👉 Which le**tt**ers appeared double in our sample?
 """
 
-# ╔═╡ 65c92cac-f930-11ea-20b1-6b8f45b3f262
-double_letters = ['x', 'y']
+# ╔═╡ 859b710a-4090-11eb-3d52-9dec27a1e421
+function find_double_letter(sample)
+	x = transition_frequencies(sample)
+	alphabet[findall(x->x!=0, x[diagind(x)])]
+end
+
+# ╔═╡ 817d363a-4090-11eb-19fa-5fbf6705dfc0
+double_letters = find_double_letter(first_sample)
 
 # ╔═╡ 4582ebf4-f930-11ea-03b2-bf4da1a8f8df
 md"""
@@ -1179,6 +1197,9 @@ bigbreak
 # ╟─b3de6260-f9a4-11ea-1bae-9153a92c3fe5
 # ╠═a6c36bd6-f9a4-11ea-1aba-f75cecc90320
 # ╟─6d3f9dae-f9a5-11ea-3228-d147435e266d
+# ╠═7912b9a8-408a-11eb-376e-6f41dc7e5886
+# ╠═34a3cfa4-408b-11eb-0686-6fd712f1a7dd
+# ╠═a742330c-408b-11eb-1e97-6d844f0ea334
 # ╠═92bf9fd2-f9a5-11ea-25c7-5966e44db6c6
 # ╟─95b81778-f9a5-11ea-3f51-019430bc8fa8
 # ╟─7df7ab82-f9ad-11ea-2243-21685d660d71
@@ -1201,15 +1222,17 @@ bigbreak
 # ╠═6896fef8-f9af-11ea-0065-816a70ba9670
 # ╟─39152104-fc49-11ea-04dd-bb34e3600f2f
 # ╟─e91c6fd8-f930-11ea-01ac-476bbde79079
+# ╠═9fa71f24-408e-11eb-2794-c1b54b18947c
 # ╠═1b4c0c28-f9ab-11ea-03a6-69f69f7f90ed
-# ╟─1f94e0a2-f9ab-11ea-1347-7dd906ebb09d
+# ╠═1f94e0a2-f9ab-11ea-1347-7dd906ebb09d
 # ╠═41b2df7c-f931-11ea-112e-ede3b16f357a
 # ╟─489fe282-f931-11ea-3dcb-35d4f2ac8b40
 # ╟─1dd1e2f4-f930-11ea-312c-5ff9e109c7f6
-# ╠═65c92cac-f930-11ea-20b1-6b8f45b3f262
+# ╠═859b710a-4090-11eb-3d52-9dec27a1e421
+# ╠═817d363a-4090-11eb-19fa-5fbf6705dfc0
 # ╟─671525cc-f930-11ea-0e71-df9d4aae1c05
 # ╟─4582ebf4-f930-11ea-03b2-bf4da1a8f8df
-# ╟─7898b76a-f930-11ea-2b7e-8126ec2b8ffd
+# ╠═7898b76a-f930-11ea-2b7e-8126ec2b8ffd
 # ╟─a5fbba46-f931-11ea-33e1-054be53d986c
 # ╟─458cd100-f930-11ea-24b8-41a49f6596a0
 # ╠═bc401bee-f931-11ea-09cc-c5efe2f11194
@@ -1222,9 +1245,9 @@ bigbreak
 # ╟─4f97b572-f9b0-11ea-0a99-87af0797bf28
 # ╟─46c905d8-f9b0-11ea-36ed-0515e8ed2621
 # ╟─4e8d327e-f9b0-11ea-3f16-c178d96d07d9
-# ╟─489b03d4-f9b0-11ea-1de0-11d4fe4e7c69
+# ╠═489b03d4-f9b0-11ea-1de0-11d4fe4e7c69
 # ╟─d83f8bbc-f9af-11ea-2392-c90e28e96c65
-# ╟─fd202410-f936-11ea-1ad6-b3629556b3e0
+# ╠═fd202410-f936-11ea-1ad6-b3629556b3e0
 # ╟─0e465160-f937-11ea-0ebb-b7e02d71e8a8
 # ╟─6718d26c-f9b0-11ea-1f5a-0f22f7ddffe9
 # ╟─141af892-f933-11ea-1e5f-154167642809
