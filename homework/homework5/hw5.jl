@@ -26,6 +26,7 @@ begin
 	using Plots
 	gr()
 	using PlutoUI
+	using Statistics
 end
 
 # ╔═╡ 19fe1ee8-0970-11eb-2a0d-7d25e7d773c6
@@ -350,7 +351,7 @@ end
 # ╔═╡ bee26546-4382-11eb-390f-05e26e849381
 let 
 	# Create a new plot with aspect ratiom 1:1
-	p = plot(ratio=1)
+	p = plot(ratio=1, xlims=(-21, 21), ylims=(-21, 21))
 	
 	# Create trajectiories
 	trajectories = [trajectory(Coordinate(0,0), 1000, 20) for _ in 1:10]
@@ -427,8 +428,9 @@ You can use the keyword argument `c=color.(agents)` inside your call to the plot
 """
 
 # ╔═╡ 1ccc961e-0a69-11eb-392b-915be07ef38d
-function visualize(agents::Vector, L)
-	p = scatter(ratio=1)
+function visualize(agents::Vector, L, offset=5)
+	lim = L+offset
+	p = scatter(ratio=1, xlims=(-lim, lim), ylims=(-lim, lim))
 	
 	for agent in agents
 		scatter!(make_tuple(agent.position), markercolor=color(agent), label=false)
@@ -441,7 +443,7 @@ end
 let
 	N = 20
 	L = 10
-	visualize(initialize(N, L), L) # uncomment this line!
+	visualize(initialize(N, L), L) |> typeof
 end
 
 # ╔═╡ f953e06e-099f-11eb-3549-73f59fed8132
@@ -572,6 +574,11 @@ Every time that you move the slider, a completely new simulation is created an r
 # ╔═╡ 4d83dbd0-0a63-11eb-0bdc-757f0e721221
 k_sweep_max = 10000
 
+# ╔═╡ 0b57871a-44fc-11eb-1736-255a287e3982
+function count_SIR(agents::Array{Agent, 1})
+	return map(stat->length(filter(a->a.status==stat, agents)), (S, I, R))
+end
+
 # ╔═╡ ef27de84-0a63-11eb-177f-2197439374c5
 let
 	N = 50
@@ -583,16 +590,12 @@ let
 	Is = zeros(k_sweep_max)
 	Rs = zeros(k_sweep_max)
 	
-	function count(agents::Array{Agent, 1})
-		return map(stat->length(filter(a->a.status==stat, agents)), (S, I, R))
-	end
-	
 	agents = initialize(N, L)	
 	
-	Ss[1], Is[1], Rs[1] = count(agents)
+	Ss[1], Is[1], Rs[1] = count_SIR(agents)
 	
 	for i in 2:k_sweep_max
-		Ss[i], Is[i], Rs[i] = count(agents)
+		Ss[i], Is[i], Rs[i] = count_SIR(agents)
 		for _ in 1:N
 			step!(agents, L, pandemic)
 		end
@@ -618,13 +621,42 @@ Let's make our plot come alive! There are two options to make our visualization 
 This an optional exercise, and our solution to 2️⃣ is given below.
 """
 
+# ╔═╡ c1b7d938-44f9-11eb-111c-c14eee428bc9
+l_sweeps_max = 1_000
+
+# ╔═╡ 910cc15c-44f9-11eb-2753-8fa6d9252aef
+@bind l_sweeps Slider(1:l_sweeps_max, default=1000)
+
 # ╔═╡ e5040c9e-0a65-11eb-0f45-270ab8161871
-# let
-# 	N = 50
-# 	L = 30
+let
+    N = 50
+    L = 40
+
+    x = initialize(N, L)
+    
+	Tmax = 200
+
+	Ss = Array{Int, 1}(undef, Tmax)
+    Is = Array{Int, 1}(undef, Tmax)
+	Rs = Array{Int, 1}(undef, Tmax)
 	
-# 	missing
-# end
+    @gif for t in 1:Tmax
+        Ss[t], Is[t], Rs[t] = count_SIR(x)
+        
+		for i in 1:50N
+            step!(x, L, pandemic)
+        end
+		
+        left = visualize(x, L)
+    
+        right = plot(xlim=(1,Tmax), ylim=(1,N), size=(600,300))
+        plot!(right, 1:t, Ss[1:t], color=color(S), label="S")
+        plot!(right, 1:t, Is[1:t], color=color(I), label="I")
+        plot!(right, 1:t, Rs[1:t], color=color(R), label="R")
+    
+        plot(left, right)
+    end
+end
 
 # ╔═╡ 2031246c-0a45-11eb-18d3-573f336044bf
 md"""
@@ -633,13 +665,54 @@ md"""
 """
 
 # ╔═╡ 63dd9478-0a45-11eb-2340-6d3d00f9bb5f
-causes_outbreak = CollisionInfectionRecovery(0.5, 0.001)
+causes_outbreak = CollisionInfectionRecovery(0.5, 0.000001)
 
 # ╔═╡ 269955e4-0a46-11eb-02cc-1946dc918bfa
-does_not_cause_outbreak = CollisionInfectionRecovery(0.5, 0.001)
+does_not_cause_outbreak = CollisionInfectionRecovery(0.5, 0.0001)
 
 # ╔═╡ 4d4548fe-0a66-11eb-375a-9313dc6c423d
-
+let
+	N = 100
+	L = 20
+	
+	p1 = plot()
+	p2 = plot()
+	
+	Ss1 = zeros(k_sweep_max) 
+	Is1 = zeros(k_sweep_max)
+	Rs1 = zeros(k_sweep_max)
+	
+	Ss2 = zeros(k_sweep_max) 
+	Is2 = zeros(k_sweep_max)
+	Rs2 = zeros(k_sweep_max)
+	
+	agents1 = initialize(N, L)	
+	agents2 = initialize(N, L)	
+	
+	Ss1[1], Is1[1], Rs1[1] = count_SIR(agents1)
+	Ss2[1], Is2[1], Rs2[1] = count_SIR(agents2)
+	
+	for i in 2:k_sweep_max
+		Ss1[i], Is1[i], Rs1[i] = count_SIR(agents1)
+		Ss2[i], Is2[i], Rs2[i] = count_SIR(agents2)
+		for _ in 1:N
+			step!(agents1, L, causes_outbreak)
+			step!(agents2, L, does_not_cause_outbreak)
+		end
+	end
+	
+	plot!(p1, title="causes_outbreak", xlabel="steps", ylabel="number")
+	plot!(p1, Ss1, label="S", linecolor=color(S))
+	plot!(p1, Is1, label="I", linecolor=color(I))
+	plot!(p1, Rs1, label="R", linecolor=color(R))
+	
+	plot!(p2, title="does_not_cause_outbreak", xlabel="steps", ylabel="number")
+	plot!(p2, Ss2, label="S", linecolor=color(S))
+	plot!(p2, Is2, label="I", linecolor=color(I))
+	plot!(p2, Rs2, label="R", linecolor=color(R))
+	
+	plot(p1, p2)
+end
 
 # ╔═╡ 20477a78-0a45-11eb-39d7-93918212a8bc
 md"""
@@ -648,7 +721,60 @@ md"""
 """
 
 # ╔═╡ 601f4f54-0a45-11eb-3d6c-6b9ec75c6d4a
+function simulation(N::Integer, L::Integer, infection::AbstractInfection)
+	agents = initialize(N, L)	
+	
+	Tmax = 10_000
+	
+	Ss = Array{Int, 1}(undef, Tmax)
+    Is = Array{Int, 1}(undef, Tmax)
+	Rs = Array{Int, 1}(undef, Tmax)
+	
+	for i in 1:Tmax
+		Ss[i], Is[i], Rs[i] = count_SIR(agents)
+		for _ in 1:N
+			step!(agents, L, pandemic)
+		end
+	end
+	return (S=Ss, I=Is, R=Rs)
+end
 
+# ╔═╡ 9f5468e2-4507-11eb-0bd8-d50d4264031d
+function repeat_simulations(N, L, infection, num_simulations)
+	map(1:num_simulations) do _
+		simulation(N, L, infection)
+	end
+end
+
+# ╔═╡ ad5d8856-4507-11eb-294a-ef3629761a6b
+simulations = repeat_simulations(50, 40, pandemic, 50)
+
+# ╔═╡ 4663dce4-4508-11eb-0837-9fe8fdaeb708
+function sir_mean_error_plot(simulations::Vector{<:NamedTuple})
+	p = plot(ylims=(-1, 55))
+	
+	T = length(first(simulations).S)
+	L = length(simulations)
+	
+	ES = map(x->getindex(x, 1), simulations) |> mean 
+	EI = map(x->getindex(x, 2), simulations) |> mean
+	ER = map(x->getindex(x, 3), simulations) |> mean
+	
+	σS = sqrt.(varm(map(x->getindex(x, 1), simulations), ES))
+	σI = sqrt.(varm(map(x->getindex(x, 2), simulations), EI))
+	σR = sqrt.(varm(map(x->getindex(x, 3), simulations), ER))
+	
+	plot!(p, 1:T, ES, linewidth=2, ribbon=σS, fillalpha=0.5, label = "Susceptible")
+	plot!(p, 1:T, EI, linewidth=2, ribbon=σI, fillalpha=0.5, label = "Infectious")
+	plot!(p, 1:T, ER, linewidth=2, ribbon=σR, fillalpha=0.5, label = "Recovered")
+	
+	plot!(title = "SIR model with Monte Carlo simulation")
+	
+	return p
+end
+
+# ╔═╡ 54f7752c-4508-11eb-2f98-652d83e940eb
+sir_mean_error_plot(simulations)
 
 # ╔═╡ b1b1afda-0a66-11eb-2988-752405815f95
 need_different_parameters_because = md"""
@@ -669,7 +795,12 @@ We create a new agent type `SocialAgent` with fields `position`, `status`, `num_
 """
 
 # ╔═╡ 1b5e72c6-0a42-11eb-3884-a377c72270c7
-# struct SocialAgent here...
+struct SocialAgent
+	position::Coordinate
+	status::InfectionStatus
+	num_infected::Integer
+	social_score::Float64
+end
 
 # ╔═╡ c704ea4c-0aec-11eb-2f2c-859c954aa520
 md"""define the `position` and `color` methods for `SocialAgent` as we did for `Agent`. This will allow the `visualize` function to work. on both kinds of Agents"""
@@ -1098,9 +1229,12 @@ bigbreak
 # ╠═778c2490-0a62-11eb-2a6c-e7fab01c6822
 # ╟─e964c7f0-0a61-11eb-1782-0b728fab1db0
 # ╠═4d83dbd0-0a63-11eb-0bdc-757f0e721221
+# ╠═0b57871a-44fc-11eb-1736-255a287e3982
 # ╠═ef27de84-0a63-11eb-177f-2197439374c5
 # ╟─8475baf0-0a63-11eb-1207-23f789d00802
 # ╟─201a3810-0a45-11eb-0ac9-a90419d0b723
+# ╠═c1b7d938-44f9-11eb-111c-c14eee428bc9
+# ╠═910cc15c-44f9-11eb-2753-8fa6d9252aef
 # ╠═e5040c9e-0a65-11eb-0f45-270ab8161871
 # ╟─f9b9e242-0a53-11eb-0c6a-4d9985ef1687
 # ╟─2031246c-0a45-11eb-18d3-573f336044bf
@@ -1108,7 +1242,11 @@ bigbreak
 # ╠═269955e4-0a46-11eb-02cc-1946dc918bfa
 # ╠═4d4548fe-0a66-11eb-375a-9313dc6c423d
 # ╟─20477a78-0a45-11eb-39d7-93918212a8bc
-# ╠═601f4f54-0a45-11eb-3d6c-6b9ec75c6d4a
+# ╟─601f4f54-0a45-11eb-3d6c-6b9ec75c6d4a
+# ╟─9f5468e2-4507-11eb-0bd8-d50d4264031d
+# ╠═ad5d8856-4507-11eb-294a-ef3629761a6b
+# ╟─4663dce4-4508-11eb-0837-9fe8fdaeb708
+# ╠═54f7752c-4508-11eb-2f98-652d83e940eb
 # ╠═b1b1afda-0a66-11eb-2988-752405815f95
 # ╟─e84e0944-0a66-11eb-12d3-e12ae10f39a6
 # ╟─05c80a0c-09a0-11eb-04dc-f97e306f1603
