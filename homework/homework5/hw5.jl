@@ -32,6 +32,12 @@ end
 # ╔═╡ 19fe1ee8-0970-11eb-2a0d-7d25e7d773c6
 md"_homework 5, version 0_"
 
+# ╔═╡ 1bba5552-0970-11eb-1b9a-87eeee0ecc36
+md"""
+
+Submission by: **_$(student.name)_** ($(student.kerberos_id)@mit.edu)
+"""
+
 # ╔═╡ 49567f8e-09a2-11eb-34c1-bb5c0b642fe8
 # WARNING FOR OLD PLUTO VERSIONS, DONT DELETE ME
 
@@ -74,20 +80,6 @@ This notebook contains _built-in, live answer checks_! In some exercises you wil
 _For MIT students:_ there will also be some additional (secret) test cases that will be run as part of the grading process, and we will look at your notebook and write comments.
 
 Feel free to ask questions!
-"""
-
-# ╔═╡ 1f299cc6-0970-11eb-195b-3f951f92ceeb
-# edit the code below to set your name and kerberos ID (i.e. email without @mit.edu)
-
-student = (name = "Jazzy Doe", kerberos_id = "jazz")
-
-# you might need to wait until all other cells in this notebook have completed running. 
-# scroll around the page to see what's up
-
-# ╔═╡ 1bba5552-0970-11eb-1b9a-87eeee0ecc36
-md"""
-
-Submission by: **_$(student.name)_** ($(student.kerberos_id)@mit.edu)
 """
 
 # ╔═╡ 2848996c-0970-11eb-19eb-c719d797c322
@@ -427,25 +419,6 @@ md"""
 You can use the keyword argument `c=color.(agents)` inside your call to the plotting function make the point colors correspond to the infection statuses. Don't forget to use `ratio=1`.
 """
 
-# ╔═╡ 1ccc961e-0a69-11eb-392b-915be07ef38d
-function visualize(agents::Vector, L, offset=5)
-	lim = L+offset
-	p = scatter(ratio=1, xlims=(-lim, lim), ylims=(-lim, lim))
-	
-	for agent in agents
-		scatter!(make_tuple(agent.position), markercolor=color(agent), label=false)
-	end
-	
-	return p
-end
-
-# ╔═╡ 1f96c80a-0a46-11eb-0690-f51c60e57c3f
-let
-	N = 20
-	L = 10
-	visualize(initialize(N, L), L) |> typeof
-end
-
 # ╔═╡ f953e06e-099f-11eb-3549-73f59fed8132
 md"""
 
@@ -477,22 +450,6 @@ Write a function `interact!` that takes two `Agent`s and a `CollisionInfectionRe
 # ╔═╡ 604b5c86-43a0-11eb-2296-b105ab5bf79b
 enforcement(p) = rand()<p
 
-# ╔═╡ d1bcd5c4-0a4b-11eb-1218-7531e367a7ff
-function interact!(agent::Agent, source::Agent, infection::CollisionInfectionRecovery)
-	if position(agent)==position(source) && agent.status==S && source.status==I
-		if enforcement(infection.p_infection)
-			agent.status = I
-		end
-	end
-	if agent.status==I
-		if enforcement(infection.p_recovery)
-			agent.status = R
-		end
-	end
-	
-	agent, source
-end
-
 # ╔═╡ 34778744-0a5f-11eb-22b6-abe8b8fc34fd
 md"""
 #### Exercise 3.1
@@ -508,16 +465,6 @@ Your turn!
 
 - return the array `agents` again.
 """
-
-# ╔═╡ 24fe0f1a-0a69-11eb-29fe-5fb6cbf281b8
-function step!(agents::Vector, L::Number, infection::AbstractInfection)
-	sidx = rand(1:length(agents))
-	agents[sidx].position = collide_boundary(agents[sidx].position + rand(possible_moves), L)
-	for idx in filter(x->x≢sidx, 1:length(agents))
-		interact!(agents[idx], agents[sidx], infection)
-	end
- 	return agents
-end
 
 # ╔═╡ 1fc3271e-0a45-11eb-0e8d-0fd355f5846b
 md"""
@@ -542,6 +489,163 @@ pandemic = CollisionInfectionRecovery(0.5, 0.00001)
 # ╔═╡ 4e7fd58a-0a62-11eb-1596-c717e0845bd5
 @bind k_sweeps Slider(1:10000, default=1000)
 
+# ╔═╡ e964c7f0-0a61-11eb-1782-0b728fab1db0
+md"""
+#### Exercise 3.3
+
+Every time that you move the slider, a completely new simulation is created an run. This makes it hard to view the progress of a single simulation over time. So in this exercise, we we look at a single simulation, and plot the S, I and R curves.
+
+👉 Plot the SIR curves of a single simulation, with the same parameters as in the previous exercise. Use `k_sweep_max = 10000` as the total number of sweeps.
+"""
+
+# ╔═╡ 4d83dbd0-0a63-11eb-0bdc-757f0e721221
+k_sweep_max = 10000
+
+# ╔═╡ 0b57871a-44fc-11eb-1736-255a287e3982
+function count_SIR(agents::Array{Agent, 1})
+	return map(stat->length(filter(a->a.status==stat, agents)), (S, I, R))
+end
+
+# ╔═╡ 201a3810-0a45-11eb-0ac9-a90419d0b723
+md"""
+#### Exercise 3.4 (optional)
+Let's make our plot come alive! There are two options to make our visualization dynamic:
+
+👉1️⃣ Precompute one simulation run and save its intermediate states using `deepcopy`. You can then write an interactive visualization that shows both the state at time $t$ (using `visualize`) and the history of $S$, $I$ and $R$ from time $0$ up to time $t$. $t$ is controlled by a slider.
+
+👉2️⃣ Use `@gif` from Plots.jl to turn a sequence of plots into an animation. Be careful to skip about 50 sweeps between each animation frame, otherwise the GIF becomes too large.
+
+This an optional exercise, and our solution to 2️⃣ is given below.
+"""
+
+# ╔═╡ c1b7d938-44f9-11eb-111c-c14eee428bc9
+l_sweeps_max = 1_000
+
+# ╔═╡ 910cc15c-44f9-11eb-2753-8fa6d9252aef
+@bind l_sweeps Slider(1:l_sweeps_max, default=1000)
+
+# ╔═╡ 2031246c-0a45-11eb-18d3-573f336044bf
+md"""
+#### Exercise 3.5
+👉  Using $L=20$ and $N=100$, experiment with the infection and recovery probabilities until you find an epidemic outbreak. (Take the recovery probability quite small.) Modify the two infections below to match your observations.
+"""
+
+# ╔═╡ 63dd9478-0a45-11eb-2340-6d3d00f9bb5f
+causes_outbreak = CollisionInfectionRecovery(0.5, 0.000001)
+
+# ╔═╡ 269955e4-0a46-11eb-02cc-1946dc918bfa
+does_not_cause_outbreak = CollisionInfectionRecovery(0.5, 0.0001)
+
+# ╔═╡ 20477a78-0a45-11eb-39d7-93918212a8bc
+md"""
+#### Exercise 3.6
+👉 With the parameters of Exercise 3.2, run 50 simulations. Plot $S$, $I$ and $R$ as a function of time for each of them (with transparency!). This should look qualitatively similar to what you saw in the previous homework. You probably need different `p_infection` and `p_recovery` values from last week. Why?
+"""
+
+# ╔═╡ 4663dce4-4508-11eb-0837-9fe8fdaeb708
+function sir_mean_error_plot(simulations::Vector{<:NamedTuple})
+	p = plot(ylims=(-1, 55))
+	
+	T = length(first(simulations).S)
+	L = length(simulations)
+	
+	ES = map(x->getindex(x, 1), simulations) |> mean 
+	EI = map(x->getindex(x, 2), simulations) |> mean
+	ER = map(x->getindex(x, 3), simulations) |> mean
+	
+	σS = sqrt.(varm(map(x->getindex(x, 1), simulations), ES))
+	σI = sqrt.(varm(map(x->getindex(x, 2), simulations), EI))
+	σR = sqrt.(varm(map(x->getindex(x, 3), simulations), ER))
+	
+	plot!(p, 1:T, ES, linewidth=2, ribbon=σS, fillalpha=0.5, label = "Susceptible")
+	plot!(p, 1:T, EI, linewidth=2, ribbon=σI, fillalpha=0.5, label = "Infectious")
+	plot!(p, 1:T, ER, linewidth=2, ribbon=σR, fillalpha=0.5, label = "Recovered")
+	
+	plot!(title = "SIR model with Monte Carlo simulation")
+	
+	return p
+end
+
+# ╔═╡ b1b1afda-0a66-11eb-2988-752405815f95
+need_different_parameters_because = md"""
+i say so
+"""
+
+# ╔═╡ 05c80a0c-09a0-11eb-04dc-f97e306f1603
+md"""
+## **Exercise 4:** _Effect of socialization_
+
+In this exercise we'll modify the simple mixing model. Instead of a constant mixing probability, i.e. a constant probability that any pair of people interact on a given day, we will have a variable probability associated with each agent, modelling the fact that some people are more or less social or contagious than others.
+"""
+
+# ╔═╡ b53d5608-0a41-11eb-2325-016636a22f71
+md"""
+#### Exercise 4.1
+We create a new agent type `SocialAgent` with fields `position`, `status`, `num_infected`, and `social_score`. The attribute `social_score` represents an agent's probability of interacting with any other agent in the population.
+"""
+
+# ╔═╡ 1b5e72c6-0a42-11eb-3884-a377c72270c7
+struct SocialAgent
+	position::Coordinate
+	status::InfectionStatus
+	num_infected::Integer
+	social_score::Float64
+end
+
+# ╔═╡ c704ea4c-0aec-11eb-2f2c-859c954aa520
+md"""define the `position` and `color` methods for `SocialAgent` as we did for `Agent`. This will allow the `visualize` function to work. on both kinds of Agents"""
+
+# ╔═╡ e97e39aa-0a5d-11eb-3d5f-f90a0acfe5a2
+begin
+	position(a::SocialAgent) = a.position
+	color(a::SocialAgent) = a.social_score
+end
+
+# ╔═╡ 1ccc961e-0a69-11eb-392b-915be07ef38d
+function visualize(agents::Vector, L, offset=5)
+	lim = L+offset
+	p = scatter(ratio=1, xlims=(-lim, lim), ylims=(-lim, lim))
+	
+	for agent in agents
+		scatter!(make_tuple(agent.position), markercolor=color(agent), label=false)
+	end
+	
+	return p
+end
+
+# ╔═╡ 1f96c80a-0a46-11eb-0690-f51c60e57c3f
+let
+	N = 20
+	L = 10
+	visualize(initialize(N, L), L) |> typeof
+end
+
+# ╔═╡ d1bcd5c4-0a4b-11eb-1218-7531e367a7ff
+function interact!(agent::Agent, source::Agent, infection::CollisionInfectionRecovery)
+	if position(agent)==position(source) && agent.status==S && source.status==I
+		if enforcement(infection.p_infection)
+			agent.status = I
+		end
+	end
+	if agent.status==I
+		if enforcement(infection.p_recovery)
+			agent.status = R
+		end
+	end
+	
+	agent, source
+end
+
+# ╔═╡ 24fe0f1a-0a69-11eb-29fe-5fb6cbf281b8
+function step!(agents::Vector, L::Number, infection::AbstractInfection)
+	sidx = rand(1:length(agents))
+	agents[sidx].position = collide_boundary(agents[sidx].position + rand(possible_moves), L)
+	for idx in filter(x->x≢sidx, 1:length(agents))
+		interact!(agents[idx], agents[sidx], infection)
+	end
+ 	return agents
+end
+
 # ╔═╡ 778c2490-0a62-11eb-2a6c-e7fab01c6822
 let
 	N = 50
@@ -562,22 +666,37 @@ let
  	plot(plot_before, plot_after)
 end
 
-# ╔═╡ e964c7f0-0a61-11eb-1782-0b728fab1db0
-md"""
-#### Exercise 3.3
-
-Every time that you move the slider, a completely new simulation is created an run. This makes it hard to view the progress of a single simulation over time. So in this exercise, we we look at a single simulation, and plot the S, I and R curves.
-
-👉 Plot the SIR curves of a single simulation, with the same parameters as in the previous exercise. Use `k_sweep_max = 10000` as the total number of sweeps.
-"""
-
-# ╔═╡ 4d83dbd0-0a63-11eb-0bdc-757f0e721221
-k_sweep_max = 10000
-
-# ╔═╡ 0b57871a-44fc-11eb-1736-255a287e3982
-function count_SIR(agents::Array{Agent, 1})
-	return map(stat->length(filter(a->a.status==stat, agents)), (S, I, R))
+# ╔═╡ 601f4f54-0a45-11eb-3d6c-6b9ec75c6d4a
+function simulation(N::Integer, L::Integer, infection::AbstractInfection)
+	agents = initialize(N, L)	
+	
+	Tmax = 10_000
+	
+	Ss = Array{Int, 1}(undef, Tmax)
+    Is = Array{Int, 1}(undef, Tmax)
+	Rs = Array{Int, 1}(undef, Tmax)
+	
+	for i in 1:Tmax
+		Ss[i], Is[i], Rs[i] = count_SIR(agents)
+		for _ in 1:N
+			step!(agents, L, pandemic)
+		end
+	end
+	return (S=Ss, I=Is, R=Rs)
 end
+
+# ╔═╡ 9f5468e2-4507-11eb-0bd8-d50d4264031d
+function repeat_simulations(N, L, infection, num_simulations)
+	map(1:num_simulations) do _
+		simulation(N, L, infection)
+	end
+end
+
+# ╔═╡ ad5d8856-4507-11eb-294a-ef3629761a6b
+simulations = repeat_simulations(50, 40, pandemic, 50)
+
+# ╔═╡ 54f7752c-4508-11eb-2f98-652d83e940eb
+sir_mean_error_plot(simulations)
 
 # ╔═╡ ef27de84-0a63-11eb-177f-2197439374c5
 let
@@ -609,24 +728,6 @@ let
 	p
 end
 
-# ╔═╡ 201a3810-0a45-11eb-0ac9-a90419d0b723
-md"""
-#### Exercise 3.4 (optional)
-Let's make our plot come alive! There are two options to make our visualization dynamic:
-
-👉1️⃣ Precompute one simulation run and save its intermediate states using `deepcopy`. You can then write an interactive visualization that shows both the state at time $t$ (using `visualize`) and the history of $S$, $I$ and $R$ from time $0$ up to time $t$. $t$ is controlled by a slider.
-
-👉2️⃣ Use `@gif` from Plots.jl to turn a sequence of plots into an animation. Be careful to skip about 50 sweeps between each animation frame, otherwise the GIF becomes too large.
-
-This an optional exercise, and our solution to 2️⃣ is given below.
-"""
-
-# ╔═╡ c1b7d938-44f9-11eb-111c-c14eee428bc9
-l_sweeps_max = 1_000
-
-# ╔═╡ 910cc15c-44f9-11eb-2753-8fa6d9252aef
-@bind l_sweeps Slider(1:l_sweeps_max, default=1000)
-
 # ╔═╡ e5040c9e-0a65-11eb-0f45-270ab8161871
 let
     N = 50
@@ -657,18 +758,6 @@ let
         plot(left, right)
     end
 end
-
-# ╔═╡ 2031246c-0a45-11eb-18d3-573f336044bf
-md"""
-#### Exercise 3.5
-👉  Using $L=20$ and $N=100$, experiment with the infection and recovery probabilities until you find an epidemic outbreak. (Take the recovery probability quite small.) Modify the two infections below to match your observations.
-"""
-
-# ╔═╡ 63dd9478-0a45-11eb-2340-6d3d00f9bb5f
-causes_outbreak = CollisionInfectionRecovery(0.5, 0.000001)
-
-# ╔═╡ 269955e4-0a46-11eb-02cc-1946dc918bfa
-does_not_cause_outbreak = CollisionInfectionRecovery(0.5, 0.0001)
 
 # ╔═╡ 4d4548fe-0a66-11eb-375a-9313dc6c423d
 let
@@ -714,112 +803,17 @@ let
 	plot(p1, p2)
 end
 
-# ╔═╡ 20477a78-0a45-11eb-39d7-93918212a8bc
-md"""
-#### Exercise 3.6
-👉 With the parameters of Exercise 3.2, run 50 simulations. Plot $S$, $I$ and $R$ as a function of time for each of them (with transparency!). This should look qualitatively similar to what you saw in the previous homework. You probably need different `p_infection` and `p_recovery` values from last week. Why?
-"""
-
-# ╔═╡ 601f4f54-0a45-11eb-3d6c-6b9ec75c6d4a
-function simulation(N::Integer, L::Integer, infection::AbstractInfection)
-	agents = initialize(N, L)	
-	
-	Tmax = 10_000
-	
-	Ss = Array{Int, 1}(undef, Tmax)
-    Is = Array{Int, 1}(undef, Tmax)
-	Rs = Array{Int, 1}(undef, Tmax)
-	
-	for i in 1:Tmax
-		Ss[i], Is[i], Rs[i] = count_SIR(agents)
-		for _ in 1:N
-			step!(agents, L, pandemic)
-		end
-	end
-	return (S=Ss, I=Is, R=Rs)
-end
-
-# ╔═╡ 9f5468e2-4507-11eb-0bd8-d50d4264031d
-function repeat_simulations(N, L, infection, num_simulations)
-	map(1:num_simulations) do _
-		simulation(N, L, infection)
-	end
-end
-
-# ╔═╡ ad5d8856-4507-11eb-294a-ef3629761a6b
-simulations = repeat_simulations(50, 40, pandemic, 50)
-
-# ╔═╡ 4663dce4-4508-11eb-0837-9fe8fdaeb708
-function sir_mean_error_plot(simulations::Vector{<:NamedTuple})
-	p = plot(ylims=(-1, 55))
-	
-	T = length(first(simulations).S)
-	L = length(simulations)
-	
-	ES = map(x->getindex(x, 1), simulations) |> mean 
-	EI = map(x->getindex(x, 2), simulations) |> mean
-	ER = map(x->getindex(x, 3), simulations) |> mean
-	
-	σS = sqrt.(varm(map(x->getindex(x, 1), simulations), ES))
-	σI = sqrt.(varm(map(x->getindex(x, 2), simulations), EI))
-	σR = sqrt.(varm(map(x->getindex(x, 3), simulations), ER))
-	
-	plot!(p, 1:T, ES, linewidth=2, ribbon=σS, fillalpha=0.5, label = "Susceptible")
-	plot!(p, 1:T, EI, linewidth=2, ribbon=σI, fillalpha=0.5, label = "Infectious")
-	plot!(p, 1:T, ER, linewidth=2, ribbon=σR, fillalpha=0.5, label = "Recovered")
-	
-	plot!(title = "SIR model with Monte Carlo simulation")
-	
-	return p
-end
-
-# ╔═╡ 54f7752c-4508-11eb-2f98-652d83e940eb
-sir_mean_error_plot(simulations)
-
-# ╔═╡ b1b1afda-0a66-11eb-2988-752405815f95
-need_different_parameters_because = md"""
-i say so
-"""
-
-# ╔═╡ 05c80a0c-09a0-11eb-04dc-f97e306f1603
-md"""
-## **Exercise 4:** _Effect of socialization_
-
-In this exercise we'll modify the simple mixing model. Instead of a constant mixing probability, i.e. a constant probability that any pair of people interact on a given day, we will have a variable probability associated with each agent, modelling the fact that some people are more or less social or contagious than others.
-"""
-
-# ╔═╡ b53d5608-0a41-11eb-2325-016636a22f71
-md"""
-#### Exercise 4.1
-We create a new agent type `SocialAgent` with fields `position`, `status`, `num_infected`, and `social_score`. The attribute `social_score` represents an agent's probability of interacting with any other agent in the population.
-"""
-
-# ╔═╡ 1b5e72c6-0a42-11eb-3884-a377c72270c7
-struct SocialAgent
-	position::Coordinate
-	status::InfectionStatus
-	num_infected::Integer
-	social_score::Float64
-end
-
-# ╔═╡ c704ea4c-0aec-11eb-2f2c-859c954aa520
-md"""define the `position` and `color` methods for `SocialAgent` as we did for `Agent`. This will allow the `visualize` function to work. on both kinds of Agents"""
-
-# ╔═╡ e97e39aa-0a5d-11eb-3d5f-f90a0acfe5a2
-# begin
-# 	position(a::SocialAgent) = ...
-# 	color(a::SocialAgent) = ...
-# end
-
 # ╔═╡ b554b654-0a41-11eb-0e0d-e57ff68ced33
 md"""
 👉 Create a function `initialize_social` that takes `N` and `L`, and creates N agents  within a 2L x 2L box, with `social_score`s chosen from 10 equally-spaced between 0.1 and 0.5. (see LinRange)
 """
 
 # ╔═╡ 40c1c1d6-0a69-11eb-3913-59e9b9ec4332
-# function initialize_social(N, L)
-# 	return missing
-# end
+function initialize_social(N, L) # creates N agents within a 2L x 2L
+	agents = [Agent(Coordinate(rand(-2L:2L), rand(-2L:2L)), S, 0, LinRange(0.1, 0.5, 10)) for _ in 1:N]
+	agents[rand(1:N)].status = I
+ 	return agents
+end
 
 # ╔═╡ 18ac9926-0aed-11eb-034f-e9849b71c9ac
 md"""
@@ -1158,7 +1152,6 @@ bigbreak
 # ╟─1bba5552-0970-11eb-1b9a-87eeee0ecc36
 # ╟─49567f8e-09a2-11eb-34c1-bb5c0b642fe8
 # ╟─181e156c-0970-11eb-0b77-49b143cc0fc0
-# ╠═1f299cc6-0970-11eb-195b-3f951f92ceeb
 # ╟─2848996c-0970-11eb-19eb-c719d797c322
 # ╠═2b37ca3a-0970-11eb-3c3d-4f788b411d1a
 # ╠═2dcb18d0-0970-11eb-048a-c1734c6db842
