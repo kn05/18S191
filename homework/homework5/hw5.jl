@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.12.17
+# v0.12.18
 
 using Markdown
 using InteractiveUtils
@@ -31,12 +31,6 @@ end
 
 # ╔═╡ 19fe1ee8-0970-11eb-2a0d-7d25e7d773c6
 md"_homework 5, version 0_"
-
-# ╔═╡ 1bba5552-0970-11eb-1b9a-87eeee0ecc36
-md"""
-
-Submission by: **_$(student.name)_** ($(student.kerberos_id)@mit.edu)
-"""
 
 # ╔═╡ 49567f8e-09a2-11eb-34c1-bb5c0b642fe8
 # WARNING FOR OLD PLUTO VERSIONS, DONT DELETE ME
@@ -502,7 +496,7 @@ Every time that you move the slider, a completely new simulation is created an r
 k_sweep_max = 10000
 
 # ╔═╡ 0b57871a-44fc-11eb-1736-255a287e3982
-function count_SIR(agents::Array{Agent, 1})
+function count_SIR(agents)
 	return map(stat->length(filter(a->a.status==stat, agents)), (S, I, R))
 end
 
@@ -585,7 +579,7 @@ We create a new agent type `SocialAgent` with fields `position`, `status`, `num_
 """
 
 # ╔═╡ 1b5e72c6-0a42-11eb-3884-a377c72270c7
-struct SocialAgent
+mutable struct SocialAgent
 	position::Coordinate
 	status::InfectionStatus
 	num_infected::Integer
@@ -598,7 +592,9 @@ md"""define the `position` and `color` methods for `SocialAgent` as we did for `
 # ╔═╡ e97e39aa-0a5d-11eb-3d5f-f90a0acfe5a2
 begin
 	position(a::SocialAgent) = a.position
-	color(a::SocialAgent) = a.social_score
+	color(a::SocialAgent) = color(a.status)
+	num_infected(a::SocialAgent) = a.num_infected
+	social_score(a::SocialAgent) = a.social_score
 end
 
 # ╔═╡ 1ccc961e-0a69-11eb-392b-915be07ef38d
@@ -625,6 +621,52 @@ function interact!(agent::Agent, source::Agent, infection::CollisionInfectionRec
 	if position(agent)==position(source) && agent.status==S && source.status==I
 		if enforcement(infection.p_infection)
 			agent.status = I
+		end
+	end
+	if agent.status==I
+		if enforcement(infection.p_recovery)
+			agent.status = R
+		end
+	end
+	
+	agent, source
+end
+
+# ╔═╡ b554b654-0a41-11eb-0e0d-e57ff68ced33
+md"""
+👉 Create a function `initialize_social` that takes `N` and `L`, and creates N agents  within a 2L x 2L box, with `social_score`s chosen from 10 equally-spaced between 0.1 and 0.5. (see LinRange)
+"""
+
+# ╔═╡ 40c1c1d6-0a69-11eb-3913-59e9b9ec4332
+function initialize_social(N, L) # creates N agents within a 2L x 2L
+	agents = [SocialAgent(Coordinate(rand(-2L:2L), rand(-2L:2L)), S, 0, rand( LinRange(0.1, 0.5, 10))) for _ in 1:N]
+	agents[rand(1:N)].status = I
+ 	return agents
+end
+
+# ╔═╡ 18ac9926-0aed-11eb-034f-e9849b71c9ac
+md"""
+Now that we have 2 agent types
+
+1. let's create an AbstractAgent type
+2. Go back in the notebook and make the agent types a subtype of AbstractAgent.
+
+"""
+
+# ╔═╡ b56ba420-0a41-11eb-266c-719d39580fa9
+md"""
+#### Exercise 4.2
+Not all two agents who end up in the same grid point may actually interact in an infectious way -- they may just be passing by and do not create enough exposure for communicating the disease.
+
+👉 Write a new `interact!` method on `SocialAgent` which adds together the social_scores for two agents and uses that as the probability that they interact in a risky way. Only if they interact in a risky way, the infection is transmitted with the usual probability.
+"""
+
+# ╔═╡ 465e918a-0a69-11eb-1b59-01150b4b0f36
+function interact!(agent::SocialAgent, source::SocialAgent, infection::CollisionInfectionRecovery)
+	if position(agent)==position(source) && agent.status==S && source.status==I
+		if enforcement(infection.p_infection*(agent.social_score+source.social_score))
+			agent.status = I
+			source.num_infected += 1
 		end
 	end
 	if agent.status==I
@@ -665,38 +707,6 @@ let
 	
  	plot(plot_before, plot_after)
 end
-
-# ╔═╡ 601f4f54-0a45-11eb-3d6c-6b9ec75c6d4a
-function simulation(N::Integer, L::Integer, infection::AbstractInfection)
-	agents = initialize(N, L)	
-	
-	Tmax = 10_000
-	
-	Ss = Array{Int, 1}(undef, Tmax)
-    Is = Array{Int, 1}(undef, Tmax)
-	Rs = Array{Int, 1}(undef, Tmax)
-	
-	for i in 1:Tmax
-		Ss[i], Is[i], Rs[i] = count_SIR(agents)
-		for _ in 1:N
-			step!(agents, L, pandemic)
-		end
-	end
-	return (S=Ss, I=Is, R=Rs)
-end
-
-# ╔═╡ 9f5468e2-4507-11eb-0bd8-d50d4264031d
-function repeat_simulations(N, L, infection, num_simulations)
-	map(1:num_simulations) do _
-		simulation(N, L, infection)
-	end
-end
-
-# ╔═╡ ad5d8856-4507-11eb-294a-ef3629761a6b
-simulations = repeat_simulations(50, 40, pandemic, 50)
-
-# ╔═╡ 54f7752c-4508-11eb-2f98-652d83e940eb
-sir_mean_error_plot(simulations)
 
 # ╔═╡ ef27de84-0a63-11eb-177f-2197439374c5
 let
@@ -803,40 +813,37 @@ let
 	plot(p1, p2)
 end
 
-# ╔═╡ b554b654-0a41-11eb-0e0d-e57ff68ced33
-md"""
-👉 Create a function `initialize_social` that takes `N` and `L`, and creates N agents  within a 2L x 2L box, with `social_score`s chosen from 10 equally-spaced between 0.1 and 0.5. (see LinRange)
-"""
-
-# ╔═╡ 40c1c1d6-0a69-11eb-3913-59e9b9ec4332
-function initialize_social(N, L) # creates N agents within a 2L x 2L
-	agents = [Agent(Coordinate(rand(-2L:2L), rand(-2L:2L)), S, 0, LinRange(0.1, 0.5, 10)) for _ in 1:N]
-	agents[rand(1:N)].status = I
- 	return agents
+# ╔═╡ 601f4f54-0a45-11eb-3d6c-6b9ec75c6d4a
+function simulation(N::Integer, L::Integer, infection::AbstractInfection)
+	agents = initialize(N, L)	
+	
+	Tmax = 10_000
+	
+	Ss = Array{Int, 1}(undef, Tmax)
+    Is = Array{Int, 1}(undef, Tmax)
+	Rs = Array{Int, 1}(undef, Tmax)
+	
+	for i in 1:Tmax
+		Ss[i], Is[i], Rs[i] = count_SIR(agents)
+		for _ in 1:N
+			step!(agents, L, pandemic)
+		end
+	end
+	return (S=Ss, I=Is, R=Rs)
 end
 
-# ╔═╡ 18ac9926-0aed-11eb-034f-e9849b71c9ac
-md"""
-Now that we have 2 agent types
+# ╔═╡ 9f5468e2-4507-11eb-0bd8-d50d4264031d
+function repeat_simulations(N, L, infection, num_simulations)
+	map(1:num_simulations) do _
+		simulation(N, L, infection)
+	end
+end
 
-1. let's create an AbstractAgent type
-2. Go back in the notebook and make the agent types a subtype of AbstractAgent.
+# ╔═╡ ad5d8856-4507-11eb-294a-ef3629761a6b
+simulations = repeat_simulations(50, 40, pandemic, 50)
 
-"""
-
-# ╔═╡ b56ba420-0a41-11eb-266c-719d39580fa9
-md"""
-#### Exercise 4.2
-Not all two agents who end up in the same grid point may actually interact in an infectious way -- they may just be passing by and do not create enough exposure for communicating the disease.
-
-👉 Write a new `interact!` method on `SocialAgent` which adds together the social_scores for two agents and uses that as the probability that they interact in a risky way. Only if they interact in a risky way, the infection is transmitted with the usual probability.
-"""
-
-# ╔═╡ 465e918a-0a69-11eb-1b59-01150b4b0f36
-# function interact!(agent::SocialAgent, source::SocialAgent, infection::CollisionInfectionRecovery)
-	
-# 	# your code here
-# end
+# ╔═╡ 54f7752c-4508-11eb-2f98-652d83e940eb
+sir_mean_error_plot(simulations)
 
 # ╔═╡ a885bf78-0a5c-11eb-2383-9d74c8765847
 md"""
@@ -854,22 +861,33 @@ In each step call `step!` 50N times.
 
 # ╔═╡ 1f172700-0a42-11eb-353b-87c0039788bd
 let
-	N = 50
-	L = 40
+    N = 50
+    L = 40
 
-	#global social_agents = initialize_social(N, L)
-	Ss, Is, Rs = [], [], []
-	
+    x = initialize_social(N, L)
+    
 	Tmax = 200
-	
-	@gif for t in 1:Tmax
 
-		# 1. Step! a lot
-		# 2. Count S, I and R, push them to Ss Is Rs
-		# 3. call visualize on the agents,
-		# 4. place the SIR plot next to visualize.
-		# plot(left, right, size=(600,300)) # final plot
-	end
+	Ss = Array{Int, 1}(undef, Tmax)
+    Is = Array{Int, 1}(undef, Tmax)
+	Rs = Array{Int, 1}(undef, Tmax)
+	
+    @gif for t in 1:Tmax
+        Ss[t], Is[t], Rs[t] = count_SIR(x)
+        
+		for i in 1:50N
+            step!(x, L, pandemic)
+        end
+		
+        left = visualize(x, L)
+    
+        right = plot(xlim=(1,Tmax), ylim=(1,N), size=(600,300))
+        plot!(right, 1:t, Ss[1:t], color=color(S), label="S")
+        plot!(right, 1:t, Is[1:t], color=color(I), label="I")
+        plot!(right, 1:t, Rs[1:t], color=color(R), label="R")
+    
+        plot(left, right)
+    end
 end
 
 # ╔═╡ b59de26c-0a41-11eb-2c67-b5f3c7780c91
@@ -879,7 +897,18 @@ md"""
 """
 
 # ╔═╡ faec52a8-0a60-11eb-082a-f5787b09d88c
-
+let
+	N = 100
+	L = 40
+	x = initialize_social(N, L)
+	Tmax = 10_000
+	
+	for _ in 1:Tmax*N
+		step!(x, L, pandemic)
+	end
+	
+	p = scatter(social_score.(x), num_infected.(x), markeralpha=0.3, markerstrokewidth=0, markersize=8, xlabel="social_score", ylabel="num_infected", label=nothing)
+end
 
 # ╔═╡ b5b4d834-0a41-11eb-1b18-1bd626d18934
 md"""
@@ -1149,7 +1178,6 @@ bigbreak
 
 # ╔═╡ Cell order:
 # ╟─19fe1ee8-0970-11eb-2a0d-7d25e7d773c6
-# ╟─1bba5552-0970-11eb-1b9a-87eeee0ecc36
 # ╟─49567f8e-09a2-11eb-34c1-bb5c0b642fe8
 # ╟─181e156c-0970-11eb-0b77-49b143cc0fc0
 # ╟─2848996c-0970-11eb-19eb-c719d797c322
