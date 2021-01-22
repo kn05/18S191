@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.12.17
+# v0.12.18
 
 using Markdown
 using InteractiveUtils
@@ -21,7 +21,6 @@ begin
 			Pkg.PackageSpec(name="PlutoUI", version="0.6.7-0.6"), 
 			Pkg.PackageSpec(name="Plots", version="1.6-1"),
 			])
-
 	using Plots
 	gr()
 	using PlutoUI
@@ -181,6 +180,23 @@ zeroten = LinRange(0.0, 10.0, 300);
 # ╔═╡ abc54b82-10b9-11eb-1641-817e2f043d26
 @bind a_finite_diff Slider(zeroten, default=4)
 
+# ╔═╡ 3d44c264-10b9-11eb-0895-dbfc22ba0c37
+let
+	p = plot(zeroten, wavy, label="f(x)")
+	scatter!(p, [a_finite_diff], [wavy(a_finite_diff)], label="a", color="red")
+	vline!(p, [a_finite_diff], label=nothing, color="red", linestyle=:dash)
+	scatter!(p, [a_finite_diff+h_finite_diff], [wavy(a_finite_diff+h_finite_diff)], label="a + h", color="green")
+	
+	try
+		result = tangent_line(wavy, a_finite_diff, h_finite_diff)
+		
+		plot!(p, zeroten, result, label="tangent", color="purple")
+	catch
+	end
+	
+	plot!(p, xlim=(0,10), ylim=(-2, 8))
+end #|> as_svg
+
 # ╔═╡ 43df67bc-10bb-11eb-1cbd-cd962a01e3ee
 md"""
 $(html"<span id=theslopeequation></span>")
@@ -304,10 +320,14 @@ r(t+h) &= r(t) + h\,\cdot \gamma i(t)
 function euler_SIR_step(β, γ, sir_0::Vector, h::Number)
 	s, i, r = sir_0
 	
+	s′ = s - h*β*s*i
+	i′ = i + h*(β*s*i - γ*i)
+	r′ = r + h*γ*i 
+	
 	return [
-		missing,
-		missing,
-		missing,
+		s′,
+		i′,
+		r′,
 	]
 end
 
@@ -330,7 +350,16 @@ function euler_SIR(β, γ, sir_0::Vector, T::AbstractRange)
 	
 	num_steps = length(T)
 	
-	return missing
+	x = []
+	
+	sir = sir_0
+	
+	for t in T
+		sir = euler_SIR_step(β, γ, sir, h)
+		push!(x, sir)
+	end
+	
+	return x
 end
 
 # ╔═╡ 4b791b76-12cd-11eb-1260-039c938f5443
@@ -401,8 +430,8 @@ You should use **anonymous functions** for this. These have the form `x -> x^2`,
 
 # ╔═╡ bd8522c6-12e8-11eb-306c-c764f78486ef
 function ∂x(f::Function, a, b)
-	
-	return missing
+	g(x) = f(x, b)
+	return finite_difference_slope(g, a)
 end
 
 # ╔═╡ 321964ac-126d-11eb-0a04-0d3e3fb9b17c
@@ -413,8 +442,8 @@ end
 
 # ╔═╡ b7d3aa8c-12e8-11eb-3430-ff5d7df6a122
 function ∂y(f::Function, a, b)
-	
-	return missing
+	g(y) = f(a, y)
+	return finite_difference_slope(g, b)
 end
 
 # ╔═╡ a15509ee-126c-11eb-1fa3-cdda55a47fcb
@@ -431,8 +460,9 @@ md"""
 
 # ╔═╡ adbf65fe-12e8-11eb-04e9-3d763ba91a63
 function gradient(f::Function, a, b)
-	
-	return missing
+	gx = ∂x(f, a, b)
+	gy = ∂y(f, a, b)
+	return [gx, gy]
 end
 
 # ╔═╡ 66b8e15e-126c-11eb-095e-39c2f6abc81d
@@ -459,8 +489,8 @@ We want to minimize a 1D function, i.e. a function $f: \mathbb{R} \to \mathbb{R}
 
 # ╔═╡ a7f1829c-12e8-11eb-15a1-5de40ed92587
 function gradient_descent_1d_step(f, x0; η=0.01)
-	
-	return missing
+	dydx = finite_difference_slope(f, x0)
+	return x0 - η*dydx
 end
 
 # ╔═╡ d33271a2-12df-11eb-172a-bd5600265f49
@@ -484,8 +514,11 @@ md"""
 
 # ╔═╡ 9489009a-12e8-11eb-2fb7-97ba0bdf339c
 function gradient_descent_1d(f, x0; η=0.01, N_steps=1000)
-	
-	return missing
+	x = x0
+	for _ in 1:N_steps
+		x = gradient_descent_1d_step(f, x, η=η)
+	end
+	return x
 end
 
 # ╔═╡ 34dc4b02-1248-11eb-26b2-5d2610cfeb41
@@ -515,14 +548,20 @@ Multivariable calculus tells us that the gradient $\nabla f(a, b)$ at a point $(
 
 # ╔═╡ 852be3c4-12e8-11eb-1bbb-5fbc0da74567
 function gradient_descent_2d_step(f, x0, y0; η=0.01)
-	
-	return missing
+	∇f = gradient(f, x0, y0)
+	return [x0, y0] - η*∇f 
 end
 
 # ╔═╡ 8a114ca8-12e8-11eb-2de6-9149d1d3bc3d
-function gradient_descent_2d(f, x0, y0; η=0.01)
-	
-	return missing
+function gradient_descent_2d(f, x0, y0; η=0.01, gradlim=0.01)
+	x = x0
+	y = y0
+	∇f = gradient(f, x0, y0)
+	while abs(∇f[1])>gradlim || abs(∇f[2])>gradlim
+		x, y = gradient_descent_2d_step(f, x, y; η)
+		∇f = gradient(f, x, y)
+	end
+	return x, y
 end
 
 # ╔═╡ 4454c2b2-12e3-11eb-012c-c362c4676bf6
@@ -546,7 +585,47 @@ We also prepared a 3D visualisation if you like! It's a bit slow...
 """
 
 # ╔═╡ 605aafa4-12e7-11eb-2d13-7f7db3fac439
-run_3d_visualisation = false
+run_3d_visualisation = true
+
+# ╔═╡ 5e0f16b4-12e3-11eb-212f-e565f97adfed
+function gradient_2d_viz_3d(N_gradient_2d, x0, y0)
+
+	history = accumulate(1:N_gradient_2d, init=[x0, y0]) do old, _
+		gradient_descent_2d_step(himmelbau, old...)
+	end
+	
+	all = [[x0, y0], history...]
+	
+	p = surface(-4:0.4:5, -4:0.4:4, himmelbau)
+	
+	trace = [himmelbau(s...) for s in all]
+	
+	plot!(p, first.(all), last.(all), trace, 
+		color="blue", opacity=range(.5,step=.2,length=length(all)), label=nothing)
+	scatter!(p, first.(all), last.(all), trace, 
+		color="blue", label="gradient descent", 
+		markersize=3, markerstrokewidth=0)
+	p
+	#as_svg(p)
+end
+
+# ╔═╡ 9ae4ebac-12e3-11eb-0acc-23113f5264a9
+if run_3d_visualisation
+	let
+		# we temporarily change the plotting backend to an interactive one
+		plotly()
+
+		# we dont use the sliders because this plot is quite slow
+		x0 = 0.5
+		N = 20
+		y0 = -3
+
+		p = gradient_2d_viz_3d(N, x0, y0)
+		gr()
+
+		p
+	end
+end
 
 # ╔═╡ a03890d6-1248-11eb-37ee-85b0a5273e0c
 md"""
@@ -628,13 +707,18 @@ $$\mathcal{L}(\mu, \sigma) := \sum_i [f_{\mu, \sigma}(x_i) - y_i]^2$$
 """
 
 # ╔═╡ 2fc55daa-124f-11eb-399e-659e59148ef5
-function loss_dice(μ, σ)
-	
-	return missing
+function loss_dice(μ, σ; datarange=dice_x, data=dice_y)
+	x = map(datarange, data) do x, y
+		(gauss(x, μ, σ) - y)^2
+	end |> sum
+	return x
 end
 
 # ╔═╡ 3a6ec2e4-124f-11eb-0f68-791475bab5cd
 loss_dice(guess_μ + 3, guess_σ) >
+loss_dice(guess_μ, guess_σ)
+
+# ╔═╡ e306856a-5c50-11eb-184e-8fba05be6bab
 loss_dice(guess_μ, guess_σ)
 
 # ╔═╡ 2fcb93aa-124f-11eb-10de-55fced6f4b83
@@ -643,12 +727,7 @@ md"""
 """
 
 # ╔═╡ a150fd60-124f-11eb-35d6-85104bcfd0fe
-found_μ, found_σ = let
-	
-	# your code here
-	
-	missing, missing
-end
+found_μ, found_σ = gradient_descent_2d(loss_dice, 30, 1; η =0.1, gradlim=1e-6)
 
 # ╔═╡ ac320522-124b-11eb-1552-51c2adaf2521
 let
@@ -733,9 +812,12 @@ This time, instead of comparing two vectors of numbers, we need to compare two v
 """
 
 # ╔═╡ 754b5368-12e8-11eb-0763-e3ec56562c5f
-function loss_sir(β, γ)
-	
-	return missing
+function loss_sir(β, γ; datarange=1:1000, data=hw4_results)
+	data_ = euler_SIR(β, γ, [0.99, 0.01, 0], datarange)
+	err = map(data, data_) do d1, d2
+		(d1-d2).^2 |> sum
+	end
+	return err|>sum
 end
 
 # ╔═╡ ee20199a-12d4-11eb-1c2c-3f571bbb232e
@@ -746,13 +828,14 @@ md"""
 👉 Use this loss function to find the optimal parameters ``\beta`` and ``\gamma``.
 """
 
-# ╔═╡ 6e1b5b6a-12e8-11eb-3655-fb10c4566cdc
-found_β, found_γ = let
-	
-	# your code here
-	
-	missing, missing
-end
+# ╔═╡ 06b908a8-5c5f-11eb-143b-2d3cc875f6af
+found_β, found_γ = gradient_descent_2d(loss_sir, 0.05, 0.005; η =1e-8, gradlim=1e-5)
+
+# ╔═╡ 2685649c-5c5f-11eb-0035-5d632ddafe8b
+heatmap(0:.001:.1, 0:.0001:.01, loss_sir)
+
+# ╔═╡ b41c4aba-5c5e-11eb-12da-4b704cbaffbd
+loss_sir(found_β, found_γ)
 
 # ╔═╡ b94b7610-106d-11eb-2852-25337ce6ec3a
 if student.name == "Jazzy Doe" || student.kerberos_id == "jazz"
@@ -1064,23 +1147,6 @@ This is an optimization for Plots.jl GR plots: it makes them less jittery and ke
 """
 as_svg = as_mime(MIME"image/svg+xml"())
 
-# ╔═╡ 3d44c264-10b9-11eb-0895-dbfc22ba0c37
-let
-	p = plot(zeroten, wavy, label="f(x)")
-	scatter!(p, [a_finite_diff], [wavy(a_finite_diff)], label="a", color="red")
-	vline!(p, [a_finite_diff], label=nothing, color="red", linestyle=:dash)
-	scatter!(p, [a_finite_diff+h_finite_diff], [wavy(a_finite_diff+h_finite_diff)], label="a + h", color="green")
-	
-	try
-		result = tangent_line(wavy, a_finite_diff, h_finite_diff)
-		
-		plot!(p, zeroten, result, label="tangent", color="purple")
-	catch
-	end
-	
-	plot!(p, xlim=(0,10), ylim=(-2, 8))
-end |> as_svg
-
 # ╔═╡ 70df9a48-10bb-11eb-0b95-95a224b45921
 let
 	slope = wavy_deriv(a_euler)
@@ -1159,46 +1225,6 @@ end
 # ╔═╡ 88b30f10-12e1-11eb-383d-4f095625cd16
 gradient_1d_viz(N_gradient_1d, x0_gradient_1d)
 
-# ╔═╡ 5e0f16b4-12e3-11eb-212f-e565f97adfed
-function gradient_2d_viz_3d(N_gradient_2d, x0, y0)
-
-	history = accumulate(1:N_gradient_2d, init=[x0, y0]) do old, _
-		gradient_descent_2d_step(himmelbau, old...)
-	end
-	
-	all = [[x0, y0], history...]
-	
-	p = surface(-4:0.4:5, -4:0.4:4, himmelbau)
-	
-	trace = [himmelbau(s...) for s in all]
-	
-	plot!(p, first.(all), last.(all), trace, 
-		color="blue", opacity=range(.5,step=.2,length=length(all)), label=nothing)
-	scatter!(p, first.(all), last.(all), trace, 
-		color="blue", label="gradient descent", 
-		markersize=3, markerstrokewidth=0)
-	
-	as_svg(p)
-end
-
-# ╔═╡ 9ae4ebac-12e3-11eb-0acc-23113f5264a9
-if run_3d_visualisation
-	let
-		# we temporarily change the plotting backend to an interactive one
-		plotly()
-
-		# we dont use the sliders because this plot is quite slow
-		x0 = 0.5
-		N = 20
-		y0 = -3
-
-		p = gradient_2d_viz_3d(N, x0, y0)
-		gr()
-
-		p
-	end
-end
-
 # ╔═╡ b6ae4d7e-12e6-11eb-1f92-c95c040d4401
 function gradient_2d_viz_2d(N_gradient_2d, x0, y0)
 
@@ -1224,6 +1250,7 @@ gradient_2d_viz_2d(N_gradient_2d, x0_gradient_2d, y0_gradient_2d)
 
 # ╔═╡ 496b8816-12d3-11eb-3cec-c777ba81eb60
 let
+	plotly()
 	p = plot()
 	plot_sir!(p, hw4_T, hw4_results, label="hw4", opacity=.7)
 	
@@ -1253,7 +1280,7 @@ end
 # ╟─0565af4c-106a-11eb-0d38-2fb84493d86f
 # ╟─056ed7f2-106a-11eb-3543-31a5cb560e80
 # ╟─0579e962-106a-11eb-26b5-2160f461f4cc
-# ╠═0587db1c-106a-11eb-0560-c3d53c516805
+# ╟─0587db1c-106a-11eb-0560-c3d53c516805
 # ╟─05976f0c-106a-11eb-03a4-0febbc18fae8
 # ╠═05b01f6e-106a-11eb-2a88-5f523fafe433
 # ╟─0d191540-106e-11eb-1f20-bf72a75fb650
@@ -1267,7 +1294,7 @@ end
 # ╟─0f0b7ec4-112c-11eb-3399-59e22df07355
 # ╠═cbf0a27a-12e8-11eb-379d-85550b942ceb
 # ╟─66198242-1262-11eb-1b0f-37c58199c754
-# ╟─abc54b82-10b9-11eb-1641-817e2f043d26
+# ╠═abc54b82-10b9-11eb-1641-817e2f043d26
 # ╟─3d44c264-10b9-11eb-0895-dbfc22ba0c37
 # ╠═2b79b698-10b9-11eb-3bde-53fc1c48d5f7
 # ╟─a732bbcc-112c-11eb-1d65-110c049e226c
@@ -1277,7 +1304,7 @@ end
 # ╟─43df67bc-10bb-11eb-1cbd-cd962a01e3ee
 # ╠═d5a8bd48-10bf-11eb-2291-fdaaff56e4e6
 # ╟─0b4e8cdc-10bd-11eb-296c-d51dc242a372
-# ╟─70df9a48-10bb-11eb-0b95-95a224b45921
+# ╠═70df9a48-10bb-11eb-0b95-95a224b45921
 # ╟─1d8ce3d6-112f-11eb-1343-079c18cdc89c
 # ╠═fa320028-12c4-11eb-0156-773e2aba8e58
 # ╟─3df7d63a-12c4-11eb-11ca-0b8db4bd9121
@@ -1297,10 +1324,10 @@ end
 # ╠═4b791b76-12cd-11eb-1260-039c938f5443
 # ╠═0a095a94-1245-11eb-001a-b908128532aa
 # ╟─51c9a25e-1244-11eb-014f-0bcce2273cee
-# ╟─58675b3c-1245-11eb-3548-c9cb8a6b3188
-# ╟─b4bb4b3a-12ce-11eb-3fe5-ad7ccd73febb
+# ╠═58675b3c-1245-11eb-3548-c9cb8a6b3188
+# ╠═b4bb4b3a-12ce-11eb-3fe5-ad7ccd73febb
 # ╟─586d0352-1245-11eb-2504-05d0aa2352c6
-# ╠═589b2b4c-1245-11eb-1ec7-693c6bda97c4
+# ╟─589b2b4c-1245-11eb-1ec7-693c6bda97c4
 # ╟─58b45a0e-1245-11eb-04d1-23a1f3a0f242
 # ╠═68274534-1103-11eb-0d62-f1acb57721bc
 # ╟─82539bbe-106e-11eb-0e9e-170dfa6a7dad
@@ -1320,7 +1347,7 @@ end
 # ╠═d33271a2-12df-11eb-172a-bd5600265f49
 # ╟─ed344a8c-12df-11eb-03a3-2922620fd20f
 # ╟─8ae98c74-12e0-11eb-2802-d9a544d8b7ae
-# ╟─88b30f10-12e1-11eb-383d-4f095625cd16
+# ╠═88b30f10-12e1-11eb-383d-4f095625cd16
 # ╟─a53cf3f8-12e1-11eb-0b0c-2b794a7ac841
 # ╟─90114f98-12e0-11eb-2011-a3207bbc24f6
 # ╟─754e4c48-12df-11eb-3818-f54f6fc7176b
@@ -1332,9 +1359,9 @@ end
 # ╟─9fd2956a-1248-11eb-266d-f558cda55702
 # ╠═852be3c4-12e8-11eb-1bbb-5fbc0da74567
 # ╠═8a114ca8-12e8-11eb-2de6-9149d1d3bc3d
-# ╠═92854562-1249-11eb-0b81-156982df1284
+# ╟─92854562-1249-11eb-0b81-156982df1284
 # ╠═4454c2b2-12e3-11eb-012c-c362c4676bf6
-# ╟─fbb4a9a4-1248-11eb-00e2-fd346f0056db
+# ╠═fbb4a9a4-1248-11eb-00e2-fd346f0056db
 # ╟─4aace1a8-12e3-11eb-3e07-b5827a2a6765
 # ╟─54a58f84-12e3-11eb-10b9-7d55a16c81ba
 # ╠═a0045046-1248-11eb-13bd-8b8ad861b29a
@@ -1342,13 +1369,13 @@ end
 # ╠═605aafa4-12e7-11eb-2d13-7f7db3fac439
 # ╟─9ae4ebac-12e3-11eb-0acc-23113f5264a9
 # ╟─5e0f16b4-12e3-11eb-212f-e565f97adfed
-# ╟─b6ae4d7e-12e6-11eb-1f92-c95c040d4401
+# ╠═b6ae4d7e-12e6-11eb-1f92-c95c040d4401
 # ╟─a03890d6-1248-11eb-37ee-85b0a5273e0c
 # ╠═6d1ee93e-1103-11eb-140f-63fca63f8b06
 # ╟─8261eb92-106e-11eb-2ccc-1348f232f5c3
 # ╠═65e691e4-124a-11eb-38b1-b1732403aa3d
 # ╟─6f4aa432-1103-11eb-13da-fdd9eefc7c86
-# ╠═dbe9635a-124b-11eb-111d-fb611954db56
+# ╟─dbe9635a-124b-11eb-111d-fb611954db56
 # ╟─ac320522-124b-11eb-1552-51c2adaf2521
 # ╟─57090426-124e-11eb-0a17-1566ae96b7c2
 # ╟─66192a74-124c-11eb-0c6a-d74aecb4c624
@@ -1358,6 +1385,7 @@ end
 # ╟─471cbd84-124c-11eb-356e-371d23011af5
 # ╠═2fc55daa-124f-11eb-399e-659e59148ef5
 # ╠═3a6ec2e4-124f-11eb-0f68-791475bab5cd
+# ╠═e306856a-5c50-11eb-184e-8fba05be6bab
 # ╟─2fcb93aa-124f-11eb-10de-55fced6f4b83
 # ╠═a150fd60-124f-11eb-35d6-85104bcfd0fe
 # ╟─3f5e88bc-12c8-11eb-2d74-51f2f5060928
@@ -1379,7 +1407,9 @@ end
 # ╠═754b5368-12e8-11eb-0763-e3ec56562c5f
 # ╠═ee20199a-12d4-11eb-1c2c-3f571bbb232e
 # ╟─38b09bd8-12d5-11eb-2f7b-579e9db3973d
-# ╠═6e1b5b6a-12e8-11eb-3655-fb10c4566cdc
+# ╠═06b908a8-5c5f-11eb-143b-2d3cc875f6af
+# ╠═2685649c-5c5f-11eb-0035-5d632ddafe8b
+# ╠═b41c4aba-5c5e-11eb-12da-4b704cbaffbd
 # ╟─106670f2-12d6-11eb-1854-5bf0fc6f4dfb
 # ╟─b94b7610-106d-11eb-2852-25337ce6ec3a
 # ╟─112eb7b2-1428-11eb-1c60-15105fa0e5fa
