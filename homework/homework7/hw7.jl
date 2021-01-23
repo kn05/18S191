@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.12.17
+# v0.12.18
 
 using Markdown
 using InteractiveUtils
@@ -157,7 +157,10 @@ box_scene = [
 		[0,-10],
 		[0,1]
 		),
-	# your code here
+	Wall(
+		[0, 10],
+		[0,-1]
+		)
 	]
 
 # ╔═╡ 293776f8-1ac4-11eb-21db-9d023c09e89f
@@ -183,7 +186,7 @@ struct Photon
 end
 
 # ╔═╡ 925e98d4-1c78-11eb-230d-994518f0060e
-test_photon = Photon([-1, 2], normalize([1,-.8]), 1.0)
+test_photon = Photon([-1, 2], normalize([1,-11.8]), 1.0)
 
 # ╔═╡ eabca8ce-1c73-11eb-26ad-271f6eba889b
 function plot_photon_arrow!(p, photon::Photon, length=2; kwargs...)
@@ -256,10 +259,18 @@ where $p$ is the position, $\hat \ell$ is the direction of the light, and $\hat 
 👉 Write a function `intersection_distance` that implements this formula, and returns $D$. You can use `dot(a,b)` to compute the vector dot product ``a \cdot b``.
 """
 
+# ╔═╡ e22cb0e6-5c7e-11eb-13da-55c4bc5bb8a8
+begin
+	pos(x::Wall) = x.position
+	pos(x::Photon) = x.p
+	nor(x::Wall) = x.normal
+	dir(x::Photon) = x.l
+end
+
 # ╔═╡ abe3de54-1ca0-11eb-01cd-11fe798bfb97
 function intersection_distance(photon::Photon, wall::Wall)
-	
-	return missing
+	D = -(pos(photon)-pos(wall))⋅nor(wall) / (dir(photon)⋅nor(wall))
+	return D
 end
 
 # ╔═╡ 42d65f56-1aca-11eb-1079-e32f85554349
@@ -281,8 +292,12 @@ We are using _floating points_ (`Float64`) to store positions, distances, etc., 
 
 # ╔═╡ a5847264-1ca0-11eb-0b45-eb5388f6e688
 function intersection(photon::Photon, wall::Wall; ϵ=1e-3)
-	
-	return missing
+	D = intersection_distance(photon, wall)
+	if D>ϵ 
+		return Intersection(wall, D, pos(photon)+D*dir(photon))
+	else
+		return Miss()
+	end
 end
 
 # ╔═╡ 7f286ccc-1c75-11eb-1270-95a87840b300
@@ -349,15 +364,6 @@ By taking the minimum, we have found our closest hit! Let's turn this into a fun
 👉 Write a function `closest_hit` that takes a `photon` and a vector of objects. Calculate the vector of `Intersection`s/`Miss`es, and return the `minimum`.
 """
 
-# ╔═╡ 19cf420e-1c7c-11eb-1cb8-dd939fee1276
-function closest_hit(photon::Photon, objects::Vector{<:Object})
-	
-	return missing
-end
-
-# ╔═╡ b8cd4112-1c7c-11eb-3b2d-29170ad9beb5
-test_closest = closest_hit(philip, ex_1_scene)
-
 # ╔═╡ e9c6a0b8-1ad0-11eb-1606-0319caf0948a
 md"""
  $(html"<br><br><br><br>")
@@ -391,7 +397,7 @@ md"""
 """
 
 # ╔═╡ 79532662-1c7e-11eb-2edf-57e7cfbc1eda
-
+reflect([1, 2], [-1, 0])
 
 # ╔═╡ b6614d80-194b-11eb-1edb-dba3c29672f8
 md"""
@@ -404,8 +410,7 @@ Our event-driven simulation is a stepping method, but instead of taking small st
 
 # ╔═╡ 2c6defd0-1ca1-11eb-17db-d5cb498f3265
 function interact(photon::Photon, hit::Intersection{Wall})
-	
-	return missing
+	return Photon(hit.point, reflect(dir(photon), nor(hit.object)), 1.)
 end
 
 # ╔═╡ 3f727a2c-1c80-11eb-3608-e55ccb9786d9
@@ -424,12 +429,6 @@ md"""
 
 👉 Write a function `trace` that takes an initial `Photon`, a vector of `Object`s and `N`, the number of steps to make. Return a vector of `Photon`s. Try to use `accumulate`.
 """
-
-# ╔═╡ 1a43b70c-1ca3-11eb-12a5-a94ebbba0e86
-function trace(photon::Photon, scene::Vector{<:Object}, N)
-	
-	return missing
-end
 
 # ╔═╡ 3cd36ac0-1a09-11eb-1818-75b36e67594a
 @bind mirror_test_ray_N Slider(1:30; default=4)
@@ -516,33 +515,6 @@ let
 	plot_photon_arrow!(p, philip, 5)
 end
 
-# ╔═╡ a99c40bc-1c7c-11eb-036b-7fe6e9b937e5
-let
-	p = plot_scene(ex_1_scene)
-	
-	plot_photon_arrow!(p, philip, 4; label="Philip")
-	
-	scatter!(p, test_closest.point[1:1], test_closest.point[2:2], label="Closest hit")
-	
-	p |> as_svg
-end
-
-# ╔═╡ 1ee0787e-1a08-11eb-233b-43a654f70117
-let
-	p = plot_scene(ex_1_scene, legend=false, xlim=(-11,11), ylim=(-11,11))
-	
-	path = trace(philip, ex_1_scene, mirror_test_ray_N)
-	
-	
-	line = [philip.p, [r.p for r in path]...]
-	plot!(p, first.(line), last.(line), lw=5, color=:pink)
-	
-	plot_photon_arrow!(p, philip)
-	plot_photon_arrow!.([p], path)
-	
-	p
-end |> as_svg
-
 # ╔═╡ e5c0e960-19cc-11eb-107d-39b397a783ab
 example_sphere = Sphere(
 	[7, -6],
@@ -624,8 +596,35 @@ With all this said, we are ready to write some code.
 
 # ╔═╡ 392fe192-1ca1-11eb-36c4-f9bd2b01a5e5
 function intersection(photon::Photon, sphere::Sphere; ϵ=1e-3)
+	l = dir(photon)
+	R₀ = pos(photon)
+	S = sphere.center
+	r = sphere.radius
+	a = l⋅l
+	b = 2l⋅(R₀-S)
+	c = (R₀-S)⋅(R₀-S) - r^2
 	
-	return missing
+	d = b^2-4(a*c)
+	
+	if d>ϵ
+		t₁, t₂ = (-b+sqrt(d))/2a, (-b-sqrt(d))/2a
+		if ϵ<t₁ && ϵ<t₂
+			t = min(t₁, t₂)
+		elseif ϵ<t₁ && t₂<ϵ
+			t = t₁
+		elseif t₁<ϵ && ϵ<t₂ 
+			t = t₂
+		else
+			return Miss()
+		end
+		
+		return Intersection(sphere, t, R₀+l*t)
+	elseif d==0
+		t = -b/2a
+		return Intersection(sphere, t, R₀+l*t)
+	else #d<0
+		Miss()
+	end
 end
 
 # ╔═╡ a306e880-19eb-11eb-0ff1-d7ef49777f63
@@ -666,9 +665,30 @@ sort(all_intersections)
 # ╔═╡ 63ef21c6-1c7a-11eb-2f3c-c5ac16bc289f
 minimum(all_intersections)
 
+# ╔═╡ 19cf420e-1c7c-11eb-1cb8-dd939fee1276
+function closest_hit(photon::Photon, objects::Vector{<:Object})
+	intersections = [intersection(photon, o) for o in objects]
+	closest = minimum(intersections)
+	return closest
+end
+
+# ╔═╡ b8cd4112-1c7c-11eb-3b2d-29170ad9beb5
+test_closest = closest_hit(philip, ex_1_scene)
+
+# ╔═╡ a99c40bc-1c7c-11eb-036b-7fe6e9b937e5
+let
+	p = plot_scene(ex_1_scene)
+	
+	plot_photon_arrow!(p, philip, 4; label="Philip")
+	
+	scatter!(p, test_closest.point[1:1], test_closest.point[2:2], label="Closest hit")
+	
+	p |> as_svg
+end
+
 # ╔═╡ af5c6bea-1c9c-11eb-35ae-250337e4fc86
 test_sphere = Sphere(
-	[7, -6],
+	[3, -2.001],
 	2,
 	1.5,
 )
@@ -797,8 +817,11 @@ md"""
 
 # ╔═╡ 427747d6-1ca1-11eb-28ae-ff50728c84fe
 function interact(photon::Photon, hit::Intersection{Sphere})
-	
-	return missing
+	if photon.ior == 1.0
+		return Photon(hit.point, refract(dir(photon), sphere_normal_at(hit.point, hit.object), photon.ior, hit.object.ior), hit.object.ior)
+	else
+		return Photon(hit.point, refract(dir(photon), sphere_normal_at(hit.point, hit.object), hit.object.ior, 1.0), photon.ior)
+	end 
 end
 
 # ╔═╡ 0b03316c-1c80-11eb-347c-1b5c9a0ae379
@@ -821,6 +844,30 @@ function step_ray(photon::Photon, objects::Vector{<:Object})
 	interact(photon, hit)
 end
 
+# ╔═╡ 1a43b70c-1ca3-11eb-12a5-a94ebbba0e86
+function trace(photon::Photon, scene::Vector{<:Object}, N)
+	history = accumulate(1:N, init=photon) do x, _
+        step_ray(x, scene)
+    end
+	return history
+end
+
+# ╔═╡ 1ee0787e-1a08-11eb-233b-43a654f70117
+let
+	p = plot_scene(ex_1_scene, legend=false, xlim=(-11,11), ylim=(-11,11))
+	
+	path = trace(philip, ex_1_scene, mirror_test_ray_N)
+	
+	
+	line = [philip.p, [r.p for r in path]...]
+	plot!(p, first.(line), last.(line), lw=5, color=:pink)
+	
+	plot_photon_arrow!(p, philip)
+	plot_photon_arrow!.([p], path)
+	
+	p
+end |> as_svg
+
 # ╔═╡ dced1fd0-1c9e-11eb-3226-17dc1e09e018
 md"""
 To test your code, modify the definition of `test_lens_photon` and `test_lens` below.
@@ -842,6 +889,7 @@ let
 	N = 3
 	
 	p = plot_scene(scene, legend=false, xlim=(-11,11), ylim=(-11,11))
+	
 	
 	path = accumulate(1:N; init=test_lens_photon) do old_photon, i
 		step_ray(old_photon, scene)
@@ -889,30 +937,6 @@ md"""
 
 # ╔═╡ 270762e4-1ca4-11eb-2fb4-392e5c3b3e04
 
-
-# ╔═╡ bbf730c8-1ca6-11eb-3bb0-1188046339ac
-md"""
-## **Exercise XX:** _Lecture transcript_
-(MIT students only)
-Please see the link for hw 7 transcript document on [Canvas](https://canvas.mit.edu/courses/5637).
-We want each of you to correct about 500 lines, but don’t spend more than 20 minutes on it.
-See the the beginning of the document for more instructions.
-
-👉 Please mention the name of the video(s) and the line ranges you edited:
-"""
-
-# ╔═╡ cbd8f164-1ca6-11eb-1440-bdaabf73a6c7
-lines_i_edited = md"""
-Abstraction, lines 1-219; Array Basics, lines 1-137; Course Intro, lines 1-144 (_for example_)
-"""
-
-# ╔═╡ ebd05bf0-19c3-11eb-2559-7d0745a84025
-if student.name == "Jazzy Doe" || student.kerberos_id == "jazz"
-	md"""
-	!!! danger "Before you submit"
-	    Remember to fill in your **name** and **Kerberos ID** at the top of this notebook.
-	"""
-end
 
 # ╔═╡ ec275590-19c3-11eb-23d0-cb3d9f62ba92
 md"## Function library
@@ -1051,7 +1075,7 @@ TODO_note(text) = Markdown.MD(Markdown.Admonition("warning", "TODO note", [text]
 # ╠═99c61b74-1941-11eb-2323-2bdb7c120a28
 # ╠═0906b340-19d3-11eb-112c-e568f69deb5d
 # ╠═e45e1d36-1a12-11eb-2720-294c4be6e9fd
-# ╟─6de1bafc-1a01-11eb-3d67-c9d9b6c3cea8
+# ╠═6de1bafc-1a01-11eb-3d67-c9d9b6c3cea8
 # ╟─eff9329e-1a05-11eb-261f-734127d36750
 # ╟─5f551588-1ac4-11eb-1f86-197442f1ef1d
 # ╠═ac9bafaa-1ac4-11eb-16c4-0df8133f9c98
@@ -1073,6 +1097,7 @@ TODO_note(text) = Markdown.MD(Markdown.Admonition("warning", "TODO note", [text]
 # ╠═bc10541e-1ac3-11eb-0b5f-916922f1a8e8
 # ╟─d39f149e-1ac3-11eb-39a2-41c2030d7d49
 # ╟─e135d490-1ac2-11eb-053e-914051f16e31
+# ╠═e22cb0e6-5c7e-11eb-13da-55c4bc5bb8a8
 # ╠═abe3de54-1ca0-11eb-01cd-11fe798bfb97
 # ╟─0787f130-1aca-11eb-24b4-2ff2ddd0bc48
 # ╟─42d65f56-1aca-11eb-1079-e32f85554349
@@ -1128,7 +1153,7 @@ TODO_note(text) = Markdown.MD(Markdown.Admonition("warning", "TODO note", [text]
 # ╟─337918f4-194f-11eb-0b45-b13fef3b23bf
 # ╟─492b257a-194f-11eb-17fb-f770b4d3da2e
 # ╠═392fe192-1ca1-11eb-36c4-f9bd2b01a5e5
-# ╠═251f0262-1a0c-11eb-39a3-09be67091dc8
+# ╟─251f0262-1a0c-11eb-39a3-09be67091dc8
 # ╟─83aa9cea-1a0c-11eb-281d-699665da2b4f
 # ╠═af5c6bea-1c9c-11eb-35ae-250337e4fc86
 # ╠═b3ab93d2-1a0b-11eb-0f5a-cdca19af3d89
@@ -1136,7 +1161,7 @@ TODO_note(text) = Markdown.MD(Markdown.Admonition("warning", "TODO note", [text]
 # ╟─584ce620-1935-11eb-177a-f75d9ad8a399
 # ╟─78915326-1937-11eb-014f-fff29b3660a0
 # ╠═14dc73d2-1a0d-11eb-1a3c-0f793e74da9b
-# ╠═71b70da6-193e-11eb-0bc4-f309d24fd4ef
+# ╟─71b70da6-193e-11eb-0bc4-f309d24fd4ef
 # ╟─54b81de0-193f-11eb-004d-f90ec43588f8
 # ╠═6fdf613c-193f-11eb-0029-957541d2ed4d
 # ╟─392c25b8-1add-11eb-225d-49cfca27bef4
@@ -1145,16 +1170,13 @@ TODO_note(text) = Markdown.MD(Markdown.Admonition("warning", "TODO note", [text]
 # ╟─dced1fd0-1c9e-11eb-3226-17dc1e09e018
 # ╠═65aec4fc-1c9e-11eb-1c5a-6dd7c533d3b8
 # ╠═5895d9ae-1c9e-11eb-2f4e-671f2a7a0150
-# ╟─83acf10e-1c9e-11eb-3426-bb28e7bc6c79
+# ╠═83acf10e-1c9e-11eb-3426-bb28e7bc6c79
 # ╟─13fef49c-1c9e-11eb-2aa3-d3aa2bfd0d57
 # ╟─c492a1f8-1a0c-11eb-2c38-5921c39cf5f8
 # ╟─b65d9a0c-1a0c-11eb-3cd5-e5a2c4302c7e
 # ╟─c00eb0a6-cab2-11ea-3887-070ebd8d56e2
 # ╟─3dd0a48c-1ca3-11eb-1127-e7c43b5d1666
 # ╠═270762e4-1ca4-11eb-2fb4-392e5c3b3e04
-# ╟─bbf730c8-1ca6-11eb-3bb0-1188046339ac
-# ╠═cbd8f164-1ca6-11eb-1440-bdaabf73a6c7
-# ╟─ebd05bf0-19c3-11eb-2559-7d0745a84025
 # ╟─ec275590-19c3-11eb-23d0-cb3d9f62ba92
 # ╟─ec31dce0-19c3-11eb-1487-23cc20cd5277
 # ╟─ec3ed530-19c3-11eb-10bb-a55e77550d1f
