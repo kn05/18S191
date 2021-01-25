@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.12.17
+# v0.12.18
 
 using Markdown
 using InteractiveUtils
@@ -470,7 +470,8 @@ The only question left is: How do we compare two matrices? When two matrices are
 
 # ╔═╡ 13c89272-f934-11ea-07fe-91b5d56dedf8
 function matrix_distance(A, B)
-	missing # do something with A .- B
+	distance = abs.(A .- B)
+	return distance |> sum
 end
 
 # ╔═╡ 7d60f056-f931-11ea-39ae-5fa18a955a77
@@ -586,7 +587,9 @@ ngrams([1, 2, 3, 42], 2) == bigrams([1, 2, 3, 42])
 
 # ╔═╡ 7be98e04-fb6b-11ea-111d-51c48f39a4e9
 function ngrams(words, n)
-	missing
+	map(1:length(words)-n+1) do i
+		words[i:i+n-1]
+	end
 end
 
 # ╔═╡ 052f822c-fb7b-11ea-382f-af4d6c2b4fdb
@@ -656,7 +659,14 @@ Dict(
 function word_counts(words::Vector)
 	counts = Dict()
 	
-	# your code here
+	for word in words
+		x = get(counts, word, 0)
+		if x==0
+			push!(counts, word=>1)
+		else
+			push!(counts, word=>x+1)
+		end
+	end
 	
 	return counts
 end
@@ -670,7 +680,10 @@ How many times does `"Emma"` occur in the book?
 """
 
 # ╔═╡ 953363dc-fb84-11ea-1128-ebdfaf5160ee
-emma_count = missing
+emma_count = let
+	d = word_counts(emma_words)
+	get(d, "Emma", 0)
+end
 
 # ╔═╡ 294b6f50-fb84-11ea-1382-03e9ab029a2d
 md"""
@@ -700,7 +713,10 @@ If the same ngram occurs multiple times (e.g. "said Emma laughing"), then the la
 function completions_cache(grams)
 	cache = Dict()
 	
-	# your code here
+	for gram in grams
+		
+		push!(cache, gram[1:end-1] => gram[end:end])
+	end
 	
 	cache
 end
@@ -805,17 +821,6 @@ md"""
 Uncomment the cell below to generate some Jane Austen text:
 """
 
-# ╔═╡ 49b69dc2-fb8f-11ea-39af-030b5c5053c3
-# generate(emma, 100; n=4) |> Quote
-
-# ╔═╡ cc07f576-fbf3-11ea-2c6f-0be63b9356fc
-if student.name == "Jazzy Doe"
-	md"""
-	!!! danger "Before you submit"
-	    Remember to fill in your **name** and **Kerberos ID** at the top of this notebook.
-	"""
-end
-
 # ╔═╡ 6b4d6584-f3be-11ea-131d-e5bdefcc791b
 md"## Function library
 
@@ -856,6 +861,9 @@ generate(
 	n=generate_sample_n_words, 
 	use_words=true
 ) |> Quote
+
+# ╔═╡ 49b69dc2-fb8f-11ea-39af-030b5c5053c3
+generate(emma, 100; n=4) |> Quote
 
 # ╔═╡ ddef9c94-fb96-11ea-1f17-f173a4ff4d89
 function compimg(img, labels=[c*d for c in replace(alphabet, ' ' => "_"), d in replace(alphabet, ' ' => "_")])
@@ -1265,7 +1273,7 @@ bigbreak
 # ╟─568f0d3a-fb54-11ea-0f77-171718ef12a5
 # ╟─82e0df62-fb54-11ea-3fff-b16c87a7d45b
 # ╠═b7601048-fb57-11ea-0754-97dc4e0623a1
-# ╟─cc42de82-fb5a-11ea-3614-25ef961729ab
+# ╠═cc42de82-fb5a-11ea-3614-25ef961729ab
 # ╠═d66fe2b2-fb5a-11ea-280f-cfb12b8296ac
 # ╠═4ca8e04a-fb75-11ea-08cc-2fdef5b31944
 # ╟─6f613cd2-fb5b-11ea-1669-cbd355677649
@@ -1293,9 +1301,9 @@ bigbreak
 # ╠═18355314-fb86-11ea-0738-3544e2e3e816
 # ╠═abe2b862-fb69-11ea-08d9-ebd4ba3437d5
 # ╟─3d105742-fb8d-11ea-09b0-cd2e77efd15c
-# ╟─a72fcf5a-fb62-11ea-1dcc-11451d23c085
-# ╟─f83991c0-fb7c-11ea-0e6f-1f80709d00c1
-# ╟─4b27a89a-fb8d-11ea-010b-671eba69364e
+# ╠═a72fcf5a-fb62-11ea-1dcc-11451d23c085
+# ╠═f83991c0-fb7c-11ea-0e6f-1f80709d00c1
+# ╠═4b27a89a-fb8d-11ea-010b-671eba69364e
 # ╟─d7b7a14a-fb90-11ea-3e2b-2fd8f379b4d8
 # ╟─1939dbea-fb63-11ea-0bc2-2d06b2d4b26c
 # ╟─70169682-fb8c-11ea-27c0-2dad2ff3080f
@@ -1305,7 +1313,6 @@ bigbreak
 # ╟─2521bac8-fb8f-11ea-04a4-0b077d77529e
 # ╠═49b69dc2-fb8f-11ea-39af-030b5c5053c3
 # ╟─7f341c4e-fb54-11ea-1919-d5421d7a2c75
-# ╟─cc07f576-fbf3-11ea-2c6f-0be63b9356fc
 # ╟─6b4d6584-f3be-11ea-131d-e5bdefcc791b
 # ╟─54b1e236-fb53-11ea-3769-b382ef8b25d6
 # ╟─b7803a28-fb96-11ea-3e30-d98eb322d19a
