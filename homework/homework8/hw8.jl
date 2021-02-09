@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.12.17
+# v0.12.18
 
 using Markdown
 using InteractiveUtils
@@ -461,14 +461,47 @@ end
 interact(photon::Photon, ::Miss, ::Any, ::Any) = photon
 
 # ╔═╡ 95ca879a-204d-11eb-3473-959811aa8320
-function step_ray(ray::Photon, objects::Vector{O},
-			   num_intersections) where {O <: Object}
+begin
+	function step_ray(ray::Photon, objects::Vector{O},
+				   num_intersections) where {O <: Object}
 
-	if num_intersections == 0
-		ray
-	else
-		hit = closest_hit(ray, objects)
-		interact(ray, hit, num_intersections, objects)
+		if num_intersections == 0
+			ray
+		else
+			hit = closest_hit(ray, objects)
+			interact(ray, hit, num_intersections, objects)
+		end
+	end
+
+	
+	function interact(ray::Photon, hit::Intersection{Sphere}, num_intersections, objects::Vector{O}) where {O <: Object}
+		
+		reflected_ray = let
+			dir = reflect(ray.l, sphere_normal_at(hit.point, hit.object))
+			reflected_ray = Photon(hit.point, dir, ray.c, ray.ior)
+			step_ray(reflected_ray, objects, num_intersections-1)
+		end
+		
+		refracted_ray = let
+			if ray.ior≈1. #out to in
+				dir = refract(ray.l, sphere_normal_at(hit.point, hit.object), 1., hit.object.s.ior)
+				refracted_ray = Photon(hit.point, dir, ray.c, hit.object.s.ior)
+				step_ray(refracted_ray, objects, num_intersections-1)
+			else #in to out
+				dir = refract(ray.l, sphere_normal_at(hit.point, hit.object), ray.ior, 1.)
+				refracted_ray = Photon(hit.point, dir, ray.c, 1.)
+				step_ray(refracted_ray, objects, num_intersections-1)
+			end
+		end
+		
+		ray_color = RGB()
+		
+		ray_color += hit.object.s.r * reflected_ray.c
+		ray_color += hit.object.s.t * refracted_ray.c
+		ray_color += hit.object.s.c.alpha * RGB(hit.object.s.c)
+				
+		Photon(ray.p, ray.l, ray_color, ray.ior)
+		
 	end
 end
 
@@ -501,13 +534,13 @@ main_scene = [
 		Surface(1.0, 0.0, RGBA(1,1,1,0.0), 1.5)),
 	
 	Sphere([0,50,-100], 20, 
-		Surface(0.0, 1.0, RGBA(0,0,0,0.0), 1.0)),
+		Surface(0.0, 1.0, RGBA(0,0,0,0.0), 1.0)),   
 	
 	Sphere([-50,0,-25], 20, 
 		Surface(0.0, 0.0, RGBA(0, .3, .8, 1), 1.0)),
 	
 	Sphere([30, 25, -60], 20,
-		Surface(0.0, 0.75, RGBA(1,0,0,0.25), 1.5)),
+		Surface(0.0, 0.75, RGBA(1,0,0,0.25), 1.5)),   
 	
 	Sphere([50, 0, -25], 20,
 		Surface(0.5, 0.0, RGBA(.1,.9,.1,0.5), 1.5)),
@@ -518,9 +551,25 @@ main_scene = [
 
 # ╔═╡ 1f66ba6e-1ef8-11eb-10ba-4594f7c5ff19
 let
-	cam = Camera((600,360), 16, -15, [0,10,100])
+	cam = Camera((1200,720), 16, -10, [0,10,100])
 
-	ray_trace(main_scene, cam; num_intersections=3)
+	ray_trace(main_scene, cam; num_intersections=7)
+end
+
+# ╔═╡ deab68ac-6040-11eb-0ee6-0f84e9e9c851
+lens_scene = [
+	sky,
+	
+	Sphere([0,50,-100], 20, 
+		Surface(0.5, 0.5, RGBA(0,0,0,0.0), 1.2)),   #0
+	
+]
+
+# ╔═╡ f1daa49a-6040-11eb-272f-f7dd990dbaee
+let
+	cam = Camera((600,360), 16, -35, [0,50,100])
+
+	ray_trace(lens_scene, cam; num_intersections=5)
 end
 
 # ╔═╡ 67c0bd70-206a-11eb-3935-83d32c67f2eb
@@ -964,7 +1013,7 @@ TODO_note(text) = Markdown.MD(Markdown.Admonition("warning", "TODO note", [text]
 # ╠═14dc73d2-1a0d-11eb-1a3c-0f793e74da9b
 # ╟─7f0bf286-2071-11eb-0cac-6d10c93bab6c
 # ╠═8a4e888c-1ef7-11eb-2a52-17db130458a5
-# ╠═9c3bdb62-1ef7-11eb-2204-417510bf0d72
+# ╟─9c3bdb62-1ef7-11eb-2204-417510bf0d72
 # ╠═cb7ed97e-1ef7-11eb-192c-abfd66238378
 # ╠═093b9e4a-1f8a-11eb-1d32-ad1d85ddaf42
 # ╠═6fdf613c-193f-11eb-0029-957541d2ed4d
@@ -996,6 +1045,8 @@ TODO_note(text) = Markdown.MD(Markdown.Admonition("warning", "TODO note", [text]
 # ╠═1f66ba6e-1ef8-11eb-10ba-4594f7c5ff19
 # ╟─d1970a34-1ef7-11eb-3e1f-0fd3b8e9657f
 # ╠═16f4c8e6-2051-11eb-2f23-f7300abea642
+# ╠═f1daa49a-6040-11eb-272f-f7dd990dbaee
+# ╠═deab68ac-6040-11eb-0ee6-0f84e9e9c851
 # ╟─7c804c30-208d-11eb-307c-076f2086ae73
 # ╟─67c0bd70-206a-11eb-3935-83d32c67f2eb
 # ╟─748cbaa2-206c-11eb-2cc9-7fa74308711b
