@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.12.18
+# v0.12.20
 
 using Markdown
 using InteractiveUtils
@@ -667,23 +667,17 @@ Another option is that we approximate the panaroma by _padding_ the image of you
 """
 
 # ╔═╡ 6480b85c-2067-11eb-0262-f752d306d8ae
-function padded(img)
-	
-	return missing
+function padded(img::Array{T, 2}) where {T}
+	h, w = size(img)
+	img′ = rand(T, 3h, 3w)
+	img′[h:2h-1, w:2w-1] = img
+	return img′
 end
 
 # ╔═╡ 3de614da-2091-11eb-361a-83bcf357c394
 md"""
 Let's put it all together!
 """
-
-# ╔═╡ ebd05bf0-19c3-11eb-2559-7d0745a84025
-if student.name == "Jazzy Doe" || student.kerberos_id == "jazz"
-	md"""
-	!!! danger "Before you submit"
-	    Remember to fill in your **name** and **Kerberos ID** at the top of this notebook.
-	"""
-end
 
 # ╔═╡ ec275590-19c3-11eb-23d0-cb3d9f62ba92
 md"## Function library
@@ -942,6 +936,9 @@ let
 	ray_trace(scene, escher_cam; num_intersections=3)
 end
 
+# ╔═╡ 5d32dcca-6d4b-11eb-3e7d-799452da0f4c
+face |> typeof
+
 # ╔═╡ 7d03b258-2067-11eb-3070-1168e282b2ea
 padded(face)
 
@@ -1067,11 +1064,11 @@ TODO_note(text) = Markdown.MD(Markdown.Admonition("warning", "TODO note", [text]
 # ╠═06ac2efc-206f-11eb-1a73-9306bf5f7a9c
 # ╟─48166866-2070-11eb-2722-556a6719c2a2
 # ╠═6480b85c-2067-11eb-0262-f752d306d8ae
+# ╠═5d32dcca-6d4b-11eb-3e7d-799452da0f4c
 # ╠═7d03b258-2067-11eb-3070-1168e282b2ea
 # ╟─3de614da-2091-11eb-361a-83bcf357c394
 # ╟─aa597a16-2066-11eb-35ae-3170468a90ed
 # ╠═c68dbe1c-2066-11eb-048d-038df2c68a8b
-# ╟─ebd05bf0-19c3-11eb-2559-7d0745a84025
 # ╟─ec275590-19c3-11eb-23d0-cb3d9f62ba92
 # ╟─2c36d3e8-2065-11eb-3a12-8382f8539ea6
 # ╟─f7b5ff68-2064-11eb-3be3-554519ca4847
