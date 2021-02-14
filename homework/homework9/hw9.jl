@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.12.9
+# v0.12.20
 
 using Markdown
 using InteractiveUtils
@@ -30,6 +30,9 @@ begin
 	using Random, Distributions
 end
 
+# ╔═╡ 4cced2b0-6ef1-11eb-2538-3be7d29b28be
+ using Statistics
+
 # ╔═╡ 169727be-2433-11eb-07ae-ab7976b5be90
 md"_homework 9, version 1_"
 
@@ -38,20 +41,6 @@ md"""
 
 # **Homework 9**: _Climate modeling I_
 `18.S191`, fall 2020
-"""
-
-# ╔═╡ 23335418-2433-11eb-05e4-2b35dc6cca0e
-# edit the code below to set your name and kerberos ID (i.e. email without @mit.edu)
-
-student = (name = "Jazzy Doe", kerberos_id = "jazz")
-
-# you might need to wait until all other cells in this notebook have completed running. 
-# scroll around the page to see what's up
-
-# ╔═╡ 18be4f7c-2433-11eb-33cb-8d90ca6f124c
-md"""
-
-Submission by: **_$(student.name)_** ($(student.kerberos_id)@mit.edu)
 """
 
 # ╔═╡ 253f4da0-2433-11eb-1e48-4906059607d3
@@ -206,7 +195,7 @@ md"""
 
 # ╔═╡ a86f13de-259d-11eb-3f46-1f6fb40020ce
 observations_from_changing_B = md"""
-Hello world!
+When climate system have a more negative value of B, climate system becomes less sensitive to the concentration of carbon dioxide. B provides feedback on temperature changes in the climate system.
 """
 
 # ╔═╡ 3d66bd30-259d-11eb-2694-471fb3a4a7be
@@ -216,7 +205,7 @@ md"""
 
 # ╔═╡ 5f82dec8-259e-11eb-2f4f-4d661f44ef41
 observations_from_nonnegative_B = md"""
-Hello world!
+
 """
 
 # ╔═╡ 56b68356-2601-11eb-39a9-5f4b8e580b87
@@ -234,9 +223,6 @@ md"""
 👉 Create a graph to visualize ECS as a function of B. 
 """
 
-# ╔═╡ b9f882d8-266b-11eb-2998-75d6539088c7
-
-
 # ╔═╡ 269200ec-259f-11eb-353b-0b73523ef71a
 md"""
 #### Exercise 1.2 - _Doubling CO₂_
@@ -253,11 +239,13 @@ md"""
 👉 In what year are we expected to have doubled the CO₂ concentration, under policy scenario RCP8.5?
 """
 
+# ╔═╡ 07f17870-6ee0-11eb-18cf-97b2b63c7ffb
+Model.RCP85
+
 # ╔═╡ 50ea30ba-25a1-11eb-05d8-b3d579f85652
 expected_double_CO2_year = let
-	
-	
-	missing
+	CO2 = Model.CO2_RCP85(1850)
+	getindex(Model.RCP85.t, findfirst(x->Model.CO2_RCP85(x)>2*CO2, Model.RCP85.t)) 
 end
 
 # ╔═╡ bade1372-25a1-11eb-35f4-4b43d4e8d156
@@ -305,6 +293,12 @@ let
 		label="ΔT(t) = T(t) - T₀")
 end |> as_svg
 
+# ╔═╡ b9f882d8-266b-11eb-2998-75d6539088c7
+let
+	B = -2.5:0.1:0
+	plot(B, ECS(B=B), legend=:bottomright, color=:darkred, label="ECS", title="ECS as a function of B", xlabel="B", ylabel="ECS")
+end
+
 # ╔═╡ 736ed1b6-1fc2-11eb-359e-a1be0a188670
 B_samples = let
 	B_distribution = Normal(B̅, σ)
@@ -316,7 +310,7 @@ B_samples = let
 end
 
 # ╔═╡ 49cb5174-1fc3-11eb-3670-c3868c9b0255
-histogram(B_samples, size=(600, 250), label=nothing, xlabel="B [W/m²/K]", ylabel="samples")
+histogram(B_samples, size=(600, 350), label=nothing, xlabel="B [W/m²/K]", ylabel="samples")
 
 # ╔═╡ f3abc83c-1fc7-11eb-1aa8-01ce67c8bdde
 md"""
@@ -324,13 +318,13 @@ md"""
 """
 
 # ╔═╡ 3d72ab3a-2689-11eb-360d-9b3d829b78a9
-ECS_samples = missing
+ECS_samples = ECS.(B=B_samples)
 
 # ╔═╡ b6d7a362-1fc8-11eb-03bc-89464b55c6fc
 md"**Answer:**"
 
 # ╔═╡ 1f148d9a-1fc8-11eb-158e-9d784e390b24
-
+histogram(ECS_samples, size=(600, 350), label=nothing, xlabel="ECS [K]", ylabel="samples", linewidth=0.)
 
 # ╔═╡ cf8dca6c-1fc8-11eb-1f89-099e6ba53c22
 md"It looks like the ECS distribution is **not normally distributed**, even though $B$ is. 
@@ -338,15 +332,31 @@ md"It looks like the ECS distribution is **not normally distributed**, even thou
 👉 How does $\overline{\text{ECS}(B)}$ compare to $\text{ECS}(\overline{B})$? What is the probability that $\text{ECS}(B)$ lies above $\text{ECS}(\overline{B})$?
 "
 
-# ╔═╡ 02173c7a-2695-11eb-251c-65efb5b4a45f
+# ╔═╡ 4e1ca0c4-6ee3-11eb-38ed-1f36ec99af5f
+let
+	s = 0
+	n = 1000
+	
+	for _ in 1:n
+		B_samples = let
+			B_distribution = Normal(B̅, σ)
+			Nsamples = 5000
 
+			samples = rand(B_distribution, Nsamples)
+			filter(x -> x < 0, samples)
+		end
+		ECS_samples = ECS.(B=B_samples)
+		s += mean(ECS_samples) > ECS(B=mean(B_samples))
+	end
+	s/n
+end
 
 # ╔═╡ 440271b6-25e8-11eb-26ce-1b80aa176aca
 md"👉 Does accounting for uncertainty in feedbacks make our expectation of global warming better (less implied warming) or worse (more implied warming)?"
 
 # ╔═╡ cf276892-25e7-11eb-38f0-03f75c90dd9e
 observations_from_the_order_of_averaging = md"""
-Hello world!
+get worse
 """
 
 # ╔═╡ 5b5f25f0-266c-11eb-25d4-17e411c850c9
@@ -434,12 +444,13 @@ In this simulation, we used `T0 = 14` and `CO2 = t -> 280`, which is why `T` is 
 
 # ╔═╡ 9596c2dc-2671-11eb-36b9-c1af7e5f1089
 simulated_rcp85_model = let
-	
-	missing
+	ebm = Model.EBM(Model.RCP85.T[1], Model.RCP85.t[1], Model.RCP85.Δt, Model.RCP85.CO2)
+	Model.run!(ebm, 2100)
+	ebm
 end
 
 # ╔═╡ f94a1d56-2671-11eb-2cdc-810a9c7a8a5f
-
+simulated_rcp85_model.T[end]
 
 # ╔═╡ 4b091fac-2672-11eb-0db8-75457788d85e
 md"""
@@ -458,8 +469,9 @@ md"""
 
 # ╔═╡ f688f9f2-2671-11eb-1d71-a57c9817433f
 function temperature_response(CO2::Function, B::Float64=-1.3)
-	
-	return missing
+	ebm = Model.EBM(14, 1850, 1, CO2; B=B)
+	Model.run!(ebm, 2100)
+	ebm
 end
 
 # ╔═╡ 049a866e-2672-11eb-29f7-bfea7ad8f572
@@ -499,7 +511,31 @@ We are interested in how the **uncertainty in our input** $B$ (the climate feedb
 """
 
 # ╔═╡ f2e55166-25ff-11eb-0297-796e97c62b07
+let
+	B_samples = let
+		B_distribution = Normal(B̅, σ)
+		Nsamples = 5000
 
+		samples = rand(B_distribution, Nsamples)
+		# we only sample negative values of B
+		filter(x -> x < 0, samples)
+	end
+	
+	T_samples = []
+	
+	
+	for B in B_samples
+		edm = temperature_response(Model.CO2_RCP85, B)
+		push!(T_samples, edm.T)
+	end
+	
+	x = length(T_samples[1])
+	T_mean = mean(T_samples)
+	T_error = sqrt.(varm(T_samples, T_mean))
+	
+	plot(1850:2100, T_mean, linewidth=2, xlabel="time [year]", ylabel="temperature [℃]", ylim=(13,Inf), label=:none)
+	
+end
 
 # ╔═╡ 1ea81214-1fca-11eb-2442-7b0b448b49d6
 md"""
@@ -765,9 +801,7 @@ TODO = html"<span style='display: inline; font-size: 2em; color: purple; font-we
 
 # ╔═╡ Cell order:
 # ╟─169727be-2433-11eb-07ae-ab7976b5be90
-# ╟─18be4f7c-2433-11eb-33cb-8d90ca6f124c
 # ╟─21524c08-2433-11eb-0c55-47b1bdc9e459
-# ╠═23335418-2433-11eb-05e4-2b35dc6cca0e
 # ╟─253f4da0-2433-11eb-1e48-4906059607d3
 # ╠═1e06178a-1fbf-11eb-32b3-61769a79b7c0
 # ╟─87e68a4a-2433-11eb-3e9d-21675850ed71
@@ -780,9 +814,9 @@ TODO = html"<span style='display: inline; font-size: 2em; color: purple; font-we
 # ╟─fa7e6f7e-2434-11eb-1e61-1b1858bb0988
 # ╟─16348b6a-1fc2-11eb-0b9c-65df528db2a1
 # ╟─e296c6e8-259c-11eb-1385-53f757f4d585
-# ╠═a86f13de-259d-11eb-3f46-1f6fb40020ce
+# ╟─a86f13de-259d-11eb-3f46-1f6fb40020ce
 # ╟─3d66bd30-259d-11eb-2694-471fb3a4a7be
-# ╠═5f82dec8-259e-11eb-2f4f-4d661f44ef41
+# ╟─5f82dec8-259e-11eb-2f4f-4d661f44ef41
 # ╟─56b68356-2601-11eb-39a9-5f4b8e580b87
 # ╟─7d815988-1fc7-11eb-322a-4509e7128ce3
 # ╟─aed8f00e-266b-11eb-156d-8bb09de0dc2b
@@ -790,6 +824,7 @@ TODO = html"<span style='display: inline; font-size: 2em; color: purple; font-we
 # ╟─269200ec-259f-11eb-353b-0b73523ef71a
 # ╠═e10a9b70-25a0-11eb-2aed-17ed8221c208
 # ╟─2dfab366-25a1-11eb-15c9-b3dd9cd6b96c
+# ╠═07f17870-6ee0-11eb-18cf-97b2b63c7ffb
 # ╠═50ea30ba-25a1-11eb-05d8-b3d579f85652
 # ╟─51e2e742-25a1-11eb-2511-ab3434eacc3e
 # ╟─bade1372-25a1-11eb-35f4-4b43d4e8d156
@@ -801,7 +836,7 @@ TODO = html"<span style='display: inline; font-size: 2em; color: purple; font-we
 # ╟─b6d7a362-1fc8-11eb-03bc-89464b55c6fc
 # ╠═1f148d9a-1fc8-11eb-158e-9d784e390b24
 # ╟─cf8dca6c-1fc8-11eb-1f89-099e6ba53c22
-# ╠═02173c7a-2695-11eb-251c-65efb5b4a45f
+# ╟─4e1ca0c4-6ee3-11eb-38ed-1f36ec99af5f
 # ╟─440271b6-25e8-11eb-26ce-1b80aa176aca
 # ╠═cf276892-25e7-11eb-38f0-03f75c90dd9e
 # ╟─5b5f25f0-266c-11eb-25d4-17e411c850c9
@@ -824,6 +859,7 @@ TODO = html"<span style='display: inline; font-size: 2em; color: purple; font-we
 # ╠═40f1e7d8-252d-11eb-0549-49ca4e806e16
 # ╟─ee1be5dc-252b-11eb-0865-291aa823b9e9
 # ╟─06c5139e-252d-11eb-2645-8b324b24c405
+# ╠═4cced2b0-6ef1-11eb-2538-3be7d29b28be
 # ╠═f2e55166-25ff-11eb-0297-796e97c62b07
 # ╟─1ea81214-1fca-11eb-2442-7b0b448b49d6
 # ╟─a0ef04b0-25e9-11eb-1110-cde93601f712
