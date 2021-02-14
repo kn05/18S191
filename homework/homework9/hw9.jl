@@ -470,7 +470,7 @@ md"""
 # ╔═╡ f688f9f2-2671-11eb-1d71-a57c9817433f
 function temperature_response(CO2::Function, B::Float64=-1.3)
 	ebm = Model.EBM(14, 1850, 1, CO2; B=B)
-	Model.run!(ebm, 2100)
+	Model.run!(ebm, 2500)
 	ebm
 end
 
@@ -514,7 +514,7 @@ We are interested in how the **uncertainty in our input** $B$ (the climate feedb
 let
 	B_samples = let
 		B_distribution = Normal(B̅, σ)
-		Nsamples = 5000
+		Nsamples = 10000
 
 		samples = rand(B_distribution, Nsamples)
 		# we only sample negative values of B
@@ -531,10 +531,39 @@ let
 	
 	x = length(T_samples[1])
 	T_mean = mean(T_samples)
-	T_error = sqrt.(varm(T_samples, T_mean))
+	T_error = stdm(T_samples, T_mean)
 	
-	plot(1850:2100, T_mean, linewidth=2, xlabel="time [year]", ylabel="temperature [℃]", ylim=(13,Inf), label=:none)
+	plot(1850:2500, T_mean, linewidth=2, ribbon=T_error, fillalpha=0.5, xlabel="time [year]", ylabel="temperature [℃]", label=:none)
 	
+end
+
+# ╔═╡ 67edf82a-6ef6-11eb-220d-69a6e444e242
+let
+	B_samples = let
+		B_distribution = Normal(B̅, σ)
+		Nsamples = 1000
+
+		samples = rand(B_distribution, Nsamples)
+		# we only sample negative values of B
+		filter(x -> x < 0, samples)
+	end
+	
+	T_samples = []
+	
+	p = plot()
+	
+	for B in B_samples
+		edm = temperature_response(Model.CO2_RCP85, B)
+		plot!(p, edm.t, edm.T, label=:none, linealpha=0.1)
+		push!(T_samples, edm.T)
+	end
+	
+	T_mean = mean(T_samples)
+	T_mean = mean(T_samples)
+	T_error = stdm(T_samples, T_mean)
+	
+	plot!(p, 1850:2500, T_mean, linewidth=2, ribbon=T_error, fillalpha=0.5, xlabel="time [year]", ylabel="temperature [℃]", label=:none, color=:darkred)
+	p
 end
 
 # ╔═╡ 1ea81214-1fca-11eb-2442-7b0b448b49d6
@@ -725,30 +754,6 @@ co2_to_melt_snowball = let
 	missing
 end
 
-# ╔═╡ 3a35598a-2527-11eb-37e5-3b3e4c63c4f7
-md"""
-## **Exercise XX:** _Lecture transcript_
-_(MIT students only)_
-
-Please see the link for hw 9 transcript document on [Canvas](https://canvas.mit.edu/courses/5637).
-We want each of you to correct about 500 lines, but don’t spend more than 20 minutes on it.
-See the the beginning of the document for more instructions.
-:point_right: Please mention the name of the video(s) and the line ranges you edited:
-"""
-
-# ╔═╡ 5041cdee-2527-11eb-154f-0b0c68e11fe3
-lines_i_edited = md"""
-Abstraction, lines 1-219; Array Basics, lines 1-137; Course Intro, lines 1-144 (_for example_)
-"""
-
-# ╔═╡ 36e2dfea-2433-11eb-1c90-bb93ab25b33c
-if student.name == "Jazzy Doe" || student.kerberos_id == "jazz"
-	md"""
-	!!! danger "Before you submit"
-	    Remember to fill in your **name** and **Kerberos ID** at the top of this notebook.
-	"""
-end
-
 # ╔═╡ 36ea4410-2433-11eb-1d98-ab4016245d95
 md"## Function library
 
@@ -810,7 +815,7 @@ TODO = html"<span style='display: inline; font-size: 2em; color: purple; font-we
 # ╟─1312525c-1fc0-11eb-2756-5bc3101d2260
 # ╠═c4398f9c-1fc4-11eb-0bbb-37f066c6027d
 # ╟─7f961bc0-1fc5-11eb-1f18-612aeff0d8df
-# ╟─25f92dec-1fc4-11eb-055d-f34deea81d0e
+# ╠═25f92dec-1fc4-11eb-055d-f34deea81d0e
 # ╟─fa7e6f7e-2434-11eb-1e61-1b1858bb0988
 # ╟─16348b6a-1fc2-11eb-0b9c-65df528db2a1
 # ╟─e296c6e8-259c-11eb-1385-53f757f4d585
@@ -860,7 +865,8 @@ TODO = html"<span style='display: inline; font-size: 2em; color: purple; font-we
 # ╟─ee1be5dc-252b-11eb-0865-291aa823b9e9
 # ╟─06c5139e-252d-11eb-2645-8b324b24c405
 # ╠═4cced2b0-6ef1-11eb-2538-3be7d29b28be
-# ╠═f2e55166-25ff-11eb-0297-796e97c62b07
+# ╟─f2e55166-25ff-11eb-0297-796e97c62b07
+# ╟─67edf82a-6ef6-11eb-220d-69a6e444e242
 # ╟─1ea81214-1fca-11eb-2442-7b0b448b49d6
 # ╟─a0ef04b0-25e9-11eb-1110-cde93601f712
 # ╟─3e310cf8-25ec-11eb-07da-cb4a2c71ae34
@@ -888,9 +894,6 @@ TODO = html"<span style='display: inline; font-size: 2em; color: purple; font-we
 # ╠═9eb07a6e-2687-11eb-0de3-7bc6aa0eefb0
 # ╟─cb15cd88-25ed-11eb-2be4-f31500a726c8
 # ╟─232b9bec-2544-11eb-0401-97a60bb172fc
-# ╟─3a35598a-2527-11eb-37e5-3b3e4c63c4f7
-# ╠═5041cdee-2527-11eb-154f-0b0c68e11fe3
-# ╟─36e2dfea-2433-11eb-1c90-bb93ab25b33c
 # ╟─36ea4410-2433-11eb-1d98-ab4016245d95
 # ╟─36f8c1e8-2433-11eb-1f6e-69dc552a4a07
 # ╟─37061f1e-2433-11eb-3879-2d31dc70a771
