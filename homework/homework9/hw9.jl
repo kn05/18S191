@@ -647,9 +647,6 @@ md"""
 👉 Create a slider for `CO2` between `CO2min` and `CO2max`. Just like the horizontal axis of our plot, we want the slider to be _logarithmic_. 
 """
 
-# ╔═╡ 1d388372-2695-11eb-3068-7b28a2ccb9ac
-
-
 # ╔═╡ 4c9173ac-2685-11eb-2129-99071821ebeb
 md"""
 👉 Write a function `step_model!` that takes an existing `ebm` and `new_CO2`, which performs a step of our interactive process:
@@ -657,14 +654,6 @@ md"""
 - Assign a new function to `ebm.CO2`. _What function?_
 - Run the model.
 """
-
-# ╔═╡ 736515ba-2685-11eb-38cb-65bfcf8d1b8d
-function step_model!(ebm::Model.EBM, CO2::Real)
-	
-	# your code here
-	
-	return ebm
-end
 
 # ╔═╡ 8b06b944-268c-11eb-0bfc-8d4dd21e1f02
 md"""
@@ -682,11 +671,29 @@ CO2min = 10
 # ╔═╡ 2bbf5a70-2676-11eb-1085-7130d4a30443
 CO2max = 1_000_000
 
+# ╔═╡ 33e3c07a-714c-11eb-14eb-a3de39902bde
+log_CO2s = log10(CO2min):0.01:log10(CO2max)
+
+# ╔═╡ 79ac46b4-7149-11eb-3873-6dc6d461f909
+@bind log_CO2 Slider(log_CO2s)
+
+# ╔═╡ 1d388372-2695-11eb-3068-7b28a2ccb9ac
+CO2 = 10^log_CO2
+
 # ╔═╡ de95efae-2675-11eb-0909-73afcd68fd42
 Tneo = -48
 
 # ╔═╡ 06d28052-2531-11eb-39e2-e9613ab0401c
 ebm = Model.EBM(Tneo, 0., 5., Model.CO2_const)
+
+# ╔═╡ 736515ba-2685-11eb-38cb-65bfcf8d1b8d
+function step_model!(ebm::Model.EBM, CO2::Real)
+	ebm.t = [0.]
+	ebm.T = [Tneo]
+	ebm.CO2 = x->CO2
+	Model.run!(ebm)
+	return ebm
+end
 
 # ╔═╡ 378aed18-252b-11eb-0b37-a3b511af2cb5
 let
@@ -699,15 +706,32 @@ let
 		legend=:topleft
 	)
 	
+	let
+		trace = []
+		CO2s = 10 .^ log_CO2s
+		for co2 in CO2s
+			step_model!(ebm, co2)
+			push!(trace, ebm.T[end])
+		end
+		plot!(p,
+			CO2s, trace,
+			color=:blue,
+			linewidth=3,
+			linealpha=0.2,
+			label=nothing
+			)
+			
+	end
+	
 	add_cold_hot_areas!(p)
 	add_reference_points!(p)
-	
-	# your code here 
+			
+	step_model!(ebm, CO2)
 	
 	plot!(p, 
 		[ebm.CO2(ebm.t[end])], [ebm.T[end]],
 		label=nothing,
-		color=:black,
+		color=:blue,
 		shape=:circle,
 	)
 	
@@ -748,10 +772,18 @@ md"""
 👉 Find the **lowest CO₂ concentration** necessary to melt the Snowball, programatically.
 """
 
+# ╔═╡ 8578bcbc-714d-11eb-13f1-e391e1cfeb39
+function equilibrium_temperature(CO2)
+	ebm = Model.EBM(Tneo, 0., 5., x -> CO2)
+	Model.run!(ebm)
+	return ebm.T[end]
+end
+
 # ╔═╡ 9eb07a6e-2687-11eb-0de3-7bc6aa0eefb0
 co2_to_melt_snowball = let
-	
-	missing
+	t_for_melt = -10
+	log_CO2_range = 5.0:0.01:6.0
+	minimum(filter(x -> t_for_melt≤equilibrium_temperature(x), 10 .^ log_CO2_range))
 end
 
 # ╔═╡ 36ea4410-2433-11eb-1d98-ab4016245d95
@@ -871,11 +903,13 @@ TODO = html"<span style='display: inline; font-size: 2em; color: purple; font-we
 # ╟─a0ef04b0-25e9-11eb-1110-cde93601f712
 # ╟─3e310cf8-25ec-11eb-07da-cb4a2c71ae34
 # ╟─d6d1b312-2543-11eb-1cb2-e5b801686ffb
-# ╠═378aed18-252b-11eb-0b37-a3b511af2cb5
+# ╟─378aed18-252b-11eb-0b37-a3b511af2cb5
 # ╟─3cbc95ba-2685-11eb-3810-3bf38aa33231
 # ╟─68b2a560-2536-11eb-0cc4-27793b4d6a70
 # ╟─0e19f82e-2685-11eb-2e99-0d094c1aa520
 # ╟─1eabe908-268b-11eb-329b-b35160ec951e
+# ╠═33e3c07a-714c-11eb-14eb-a3de39902bde
+# ╠═79ac46b4-7149-11eb-3873-6dc6d461f909
 # ╠═1d388372-2695-11eb-3068-7b28a2ccb9ac
 # ╟─53c2eaf6-268b-11eb-0899-b91c03713da4
 # ╠═06d28052-2531-11eb-39e2-e9613ab0401c
@@ -891,6 +925,7 @@ TODO = html"<span style='display: inline; font-size: 2em; color: purple; font-we
 # ╠═607058ec-253c-11eb-0fb6-add8cfb73a4f
 # ╟─9c1f73e0-268a-11eb-2bf1-216a5d869568
 # ╟─11096250-2544-11eb-057b-d7112f20b05c
+# ╠═8578bcbc-714d-11eb-13f1-e391e1cfeb39
 # ╠═9eb07a6e-2687-11eb-0de3-7bc6aa0eefb0
 # ╟─cb15cd88-25ed-11eb-2be4-f31500a726c8
 # ╟─232b9bec-2544-11eb-0401-97a60bb172fc
