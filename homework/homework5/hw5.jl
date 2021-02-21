@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.12.18
+# v0.12.20
 
 using Markdown
 using InteractiveUtils
@@ -169,8 +169,16 @@ md"""
 """
 
 # ╔═╡ e24d5796-0a68-11eb-23bb-d55d206f3c40
+begin
+	
 function Base.:+(a::Coordinate, b::Coordinate)
 	return Coordinate(a.x+b.x, a.y+b.y)
+end
+	
+function Base.:-(a::Coordinate, b::Coordinate)
+	return Coordinate(a.x-b.x, a.y-b.y)
+end
+	
 end
 
 # ╔═╡ ec8e4daa-0a2c-11eb-20e1-c5957e1feba3
@@ -916,7 +924,21 @@ md"""
 """
 
 # ╔═╡ a83c96e2-0a5a-11eb-0e58-15b5dda7d2d2
-
+let
+	N = 100
+	L = 40
+	xs = initialize_social(N, L)
+	for x in xs
+		x.social_score *= .25
+	end
+	Tmax = 10_000
+	
+	for _ in 1:Tmax*N
+		step!(xs, L, pandemic)
+	end
+	
+	p = scatter(social_score.(xs), num_infected.(xs), markeralpha=0.3, markerstrokewidth=0, markersize=8, xlabel="social_score", ylabel="num_infected", label=nothing)
+end
 
 # ╔═╡ 05fc5634-09a0-11eb-038e-53d63c3edaf2
 md"""
@@ -942,7 +964,7 @@ completely quarantined in their original locations.
 
 """
 
-# ╔═╡ 24c2fb0c-0a42-11eb-1a1a-f1246f3420ff
+# ╔═╡ 069427a0-746b-11eb-2951-1bcd648952b6
 
 
 # ╔═╡ c7649966-0a41-11eb-3a3a-57363cea7b06
@@ -975,14 +997,6 @@ different densities.
 
 # ╔═╡ d147f7f0-0a66-11eb-2877-2bc6680e396d
 
-
-# ╔═╡ 0e6b60f6-0970-11eb-0485-636624a0f9d7
-if student.name == "Jazzy Doe"
-	md"""
-	!!! danger "Before you submit"
-	    Remember to fill in your **name** and **Kerberos ID** at the top of this notebook.
-	"""
-end
 
 # ╔═╡ 0a82a274-0970-11eb-20a2-1f590be0e576
 md"## Function library
@@ -1287,7 +1301,7 @@ bigbreak
 # ╟─b5b4d834-0a41-11eb-1b18-1bd626d18934
 # ╠═a83c96e2-0a5a-11eb-0e58-15b5dda7d2d2
 # ╟─05fc5634-09a0-11eb-038e-53d63c3edaf2
-# ╠═24c2fb0c-0a42-11eb-1a1a-f1246f3420ff
+# ╠═069427a0-746b-11eb-2951-1bcd648952b6
 # ╟─c7649966-0a41-11eb-3a3a-57363cea7b06
 # ╠═2635b574-0a42-11eb-1daa-971b2596ce44
 # ╟─c77b085e-0a41-11eb-2fcb-534238cd3c49
@@ -1295,7 +1309,6 @@ bigbreak
 # ╟─c792374a-0a41-11eb-1e5b-89d9de2cf1f9
 # ╠═d147f7f0-0a66-11eb-2877-2bc6680e396d
 # ╟─e0baf75a-0a66-11eb-0562-938b64a473ac
-# ╟─0e6b60f6-0970-11eb-0485-636624a0f9d7
 # ╟─0a82a274-0970-11eb-20a2-1f590be0e576
 # ╟─0aa666dc-0970-11eb-2568-99a6340c5ebd
 # ╟─0acaf3b2-0970-11eb-1d98-bf9a718deaee
